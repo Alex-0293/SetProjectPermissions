@@ -93,124 +93,169 @@ $MyScriptRoot = Get-WorkDir
 Get-VarsFromFile    "$MyScriptRoot\Vars.ps1"
 Initialize-Logging   $MyScriptRoot "Latest"
 
-[array] $Global:LocalRoles  = @()
-[string]$RoleFile           = "$ScriptRoot\ACL\Roles.csv"
-$Global:LocalRoles         += Import-Csv -path $RoleFile -Encoding utf8
+[string]$ACLFile   = "$ScriptRoot\ACL\ACL.xml"
+[string]$RolesFile = "$ScriptRoot\ACL\Roles.csv"
 
-Write-Host "###############################################################################" -ForegroundColor Green
-Write-Host "Set NTFS permissions to project [$ScriptRoot]" -ForegroundColor Green
-Write-Host ""
-
-$ACL = Import-Clixml "$ScriptRoot\ACL\ACL.xml"
-
-[array] $Global:Array = @()
-foreach ($item in $ACL){
-    Set-NTFSAccess $item.Path $item  
-}
-
-$DistinctFolderPath = $Global:Array | Where-Object { $_.Folder -eq $true } | Select-Object Path -Unique
-Foreach ($Item in $DistinctFolderPath) {
-    $ItemPath = $Item.path
-    Write-Host $ItemPath
-    $CurrentACL = Get-Acl $ItemPath
-
-    [void]$CurrentACL.SetAccessRuleProtection($true, $false) # Delete inheritance  
-
-    $ACLToRemove = $CurrentACL.Access | Where-Object { $_.IsInherited -eq $false}       
-    foreach ($Item1 in  $ACLToRemove){
-        [void]$CurrentACL.RemoveAccessRule($Item1) 
-    } 
-
-    $ACLs = $Global:Array | Where-Object { $_.path -eq $ItemPath }
-    [array]$Rights = @()
-    Foreach ($Acl in $ACLs) {  
-        $Rights += $Acl.ACL          
-        $CurrentACL.SetAccessRule($Acl.ACL) 
-        $Owner = $Acl.owner
-    }
-   
-    $FileACL = Get-Acl $ItemPath
+if ((Test-Path $ACLFile) -and (Test-Path $RolesFile)){
     
-    $RulesIsEqual = $False
+    Add-ToLog -Message "Set NTFS permissions to project [$ScriptRoot]." -logFilePath $Global:LogFilePath -display -status "Info"
+    [array] $Global:LocalRoles  = @()
 
-    If ($FileACL.Access.count -eq $CurrentACL.Access.count){
-        $RuleCounter = 0
-        $RulesIsEqual = $true
-        foreach ($Rule in $FileACL.Access){
-            If (!($Rule = $CurrentACL.Access[$RuleCounter])) {
-                $RulesIsEqual = $False
-            }
-            $RuleCounter += 1
+    $Global:LocalRoles = Import-Csv -path $RolesFile -Encoding utf8
+    $ACL = Import-Clixml $ACLFile 
+
+    [array] $Global:Array = @()
+    foreach ($item in $ACL){
+        Set-NTFSAccess $item.Path $item  
+    }
+
+    $DistinctFolderPath = $Global:Array | Where-Object { $_.Folder -eq $true } | Select-Object Path -Unique
+    Foreach ($Item in $DistinctFolderPath) {
+        $ItemPath = $Item.path
+        Add-ToLog -Message "Proceed object [$ItemPath]." -logFilePath $Global:LogFilePath -display -status "Info"
+        $CurrentACL = Get-Acl $ItemPath
+
+        [void]$CurrentACL.SetAccessRuleProtection($true, $false) # Delete inheritance  
+
+        $ACLToRemove = $CurrentACL.Access | Where-Object { $_.IsInherited -eq $false}       
+        foreach ($Item1 in  $ACLToRemove){
+            [void]$CurrentACL.RemoveAccessRule($Item1) 
+        } 
+
+        $ACLs = $Global:Array | Where-Object { $_.path -eq $ItemPath }
+        [array]$Rights = @()
+        Foreach ($Acl in $ACLs) {  
+            $Rights += $Acl.ACL          
+            $CurrentACL.SetAccessRule($Acl.ACL) 
+            $Owner = $Acl.owner
         }
     
-    }    
-    
-    if ($FileACL.owner -ne $CurrentACL.owner) {
-        $CurrentACL.SetOwner($Owner)
+        $FileACL = Get-Acl $ItemPath
+        
         $RulesIsEqual = $False
-    }
-    
-    if (!$RulesIsEqual) {
-        $Rights | Select-Object * | Format-Table -AutoSize
-        Set-Acl -Path $ItemPath -AclObject $CurrentACL
-        Write-Host "Permissions changed."
-    }
-    Else {
-        Write-Host "Permissions are equal."
-    }
-}
 
-$DistinctFilePath = $Global:Array | Where-Object { $_.Folder -eq $false } | Select-Object Path -Unique
-Foreach ($Item in $DistinctFilePath) {
-    $ItemPath = $Item.path
-    Write-Host $ItemPath
-    $CurrentACL = Get-Acl $ItemPath
+        If ($FileACL.Access.count -eq $CurrentACL.Access.count) {
+            $RulesIsEqual = $true        
+            [array]$AccessArray1 = @()
+            foreach ($Rule in $FileACL.Access) {
+                $PSO = [PSCustomObject]@{
+                    FileSystemRights  = $Rule.FileSystemRights
+                    AccessControlType = $Rule.AccessControlType
+                    IdentityReference = $Rule.IdentityReference
+                    IsInherited       = $Rule.IsInherited
+                    InheritanceFlags  = $Rule.InheritanceFlags
+                    PropagationFlags  = $Rule.PropagationFlags
+                }
+                $AccessArray1 += $PSO                
+            }
+            [array]$AccessArray2 = @()
+            foreach ($Rule in $CurrentACL.Access) {
+                $PSO = [PSCustomObject]@{
+                    FileSystemRights  = $Rule.FileSystemRights
+                    AccessControlType = $Rule.AccessControlType
+                    IdentityReference = $Rule.IdentityReference
+                    IsInherited       = $Rule.IsInherited
+                    InheritanceFlags  = $Rule.InheritanceFlags
+                    PropagationFlags  = $Rule.PropagationFlags
+                }
+                $AccessArray2 += $PSO                
+            }
 
-    [void]$CurrentACL.SetAccessRuleProtection($true, $false) # Delete inheritance  
-
-    $ACLToRemove = $CurrentACL.Access | Where-Object { $_.IsInherited -eq $false }       
-    foreach ($Item1 in  $ACLToRemove) {
-        [void]$CurrentACL.RemoveAccessRule($Item1) 
-    } 
-
-    $ACLs = $Global:Array | Where-Object { $_.path -eq $ItemPath }
-    [array]$Rights = @()
-    Foreach ($Acl in $ACLs) {  
-        $Rights += $Acl.ACL
-        $CurrentACL.SetAccessRule($Acl.ACL) 
-        $Owner = $Acl.owner
-    }    
-    
-    $FileACL = Get-Acl $ItemPath
-    
-    $RulesIsEqual = $False
-
-    If ($FileACL.Access.count -eq $CurrentACL.Access.count) {
-        $RuleCounter = 0
-        $RulesIsEqual = $true        
-        foreach ($Rule in $FileACL.Access) {
-            If (!($Rule = $CurrentACL.Access[$RuleCounter])) {
+            $Diff = Get-DifferenceBetweenArrays -FirstArray $AccessArray1 -SecondArray $AccessArray2
+            If ($Diff.count -gt 0) {
                 $RulesIsEqual = $False
             }
-            $RuleCounter += 1
+        }     
+        
+        if ($FileACL.owner -ne $CurrentACL.owner) {
+            $CurrentACL.SetOwner($Owner)
+            $RulesIsEqual = $False
         }
-    
-    }    
+        
+        if (!$RulesIsEqual) {
+            $Rights | Select-Object * | Format-Table -AutoSize
+            Set-Acl -Path $ItemPath -AclObject $CurrentACL
+            Add-ToLog -Message "Permissions changed." -logFilePath $Global:LogFilePath -display -status "Info"
+        }
+        Else {
+            Add-ToLog -Message "Permissions are equal to model." -logFilePath $Global:LogFilePath -display -status "Info"
+        }
+    }
 
-    if ($FileACL.owner -ne $CurrentACL.owner){
-        $CurrentACL.SetOwner($Owner)
+    $DistinctFilePath = $Global:Array | Where-Object { $_.Folder -eq $false } | Select-Object Path -Unique
+    Foreach ($Item in $DistinctFilePath) {
+        $ItemPath = $Item.path
+        Add-ToLog -Message "Proceed object [$ItemPath]." -logFilePath $Global:LogFilePath -display -status "Info"
+        $CurrentACL = Get-Acl $ItemPath
+
+        [void]$CurrentACL.SetAccessRuleProtection($true, $false) # Delete inheritance  
+
+        $ACLToRemove = $CurrentACL.Access | Where-Object { $_.IsInherited -eq $false }       
+        foreach ($Item1 in  $ACLToRemove) {
+            [void]$CurrentACL.RemoveAccessRule($Item1) 
+        } 
+
+        $ACLs = $Global:Array | Where-Object { $_.path -eq $ItemPath }
+        [array]$Rights = @()
+        Foreach ($Acl in $ACLs) {  
+            $Rights += $Acl.ACL
+            $CurrentACL.SetAccessRule($Acl.ACL) 
+            $Owner = $Acl.owner
+        }    
+        
+        $FileACL = Get-Acl $ItemPath
+        
         $RulesIsEqual = $False
+
+        If ($FileACL.Access.count -eq $CurrentACL.Access.count) {
+            $RulesIsEqual = $true        
+            [array]$AccessArray1 = @()
+            foreach ($Rule in $FileACL.Access) {
+                $PSO = [PSCustomObject]@{
+                    FileSystemRights  = $Rule.FileSystemRights
+                    AccessControlType = $Rule.AccessControlType
+                    IdentityReference = $Rule.IdentityReference
+                    IsInherited       = $Rule.IsInherited
+                    InheritanceFlags  = $Rule.InheritanceFlags
+                    PropagationFlags  = $Rule.PropagationFlags
+                }
+                $AccessArray1 += $PSO                
+            }
+            [array]$AccessArray2 = @()
+            foreach ($Rule in $CurrentACL.Access) {
+                $PSO = [PSCustomObject]@{
+                    FileSystemRights  = $Rule.FileSystemRights
+                    AccessControlType = $Rule.AccessControlType
+                    IdentityReference = $Rule.IdentityReference
+                    IsInherited       = $Rule.IsInherited
+                    InheritanceFlags  = $Rule.InheritanceFlags
+                    PropagationFlags  = $Rule.PropagationFlags
+                }
+                $AccessArray2 += $PSO                
+            }
+
+            $Diff = Get-DifferenceBetweenArrays -FirstArray $AccessArray1 -SecondArray $AccessArray2
+            If ($Diff.count -gt 0) {
+                $RulesIsEqual = $False
+            }
+        }    
+
+        if ($FileACL.owner -ne $CurrentACL.owner){
+            $CurrentACL.SetOwner($Owner)
+            $RulesIsEqual = $False
+        }
+        
+        if (!$RulesIsEqual) {
+            $Rights | Select-Object * | Format-Table -AutoSize
+            Set-Acl -Path $ItemPath -AclObject $CurrentACL
+            Add-ToLog -Message "Permissions changed." -logFilePath $Global:LogFilePath -display -status "Info"
+        }
+        Else{
+            Add-ToLog -Message "Permissions are equal to model." -logFilePath $Global:LogFilePath -display -status "Info"
+        }
     }
-    
-    if (!$RulesIsEqual) {
-        $Rights | Select-Object * | Format-Table -AutoSize
-        Set-Acl -Path $ItemPath -AclObject $CurrentACL
-        write-host "Permissions changed."
-    }
-    Else{
-        Write-Host "Permissions are equal."
-    }
+    Add-ToLog -Message "Permissions set." -logFilePath $Global:LogFilePath -display -status "Info"
 }
-Write-Host ""
-Write-Host "Permissions set!" -ForegroundColor Green
-Write-Host "###############################################################################" -ForegroundColor Green
+Else{
+    Add-ToLog -Message "There is no [$ACLFile] or [$RolesFile] for project [$ScriptRoot]." -logFilePath $Global:LogFilePath -display -status "Error"
+}

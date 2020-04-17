@@ -1,5 +1,5 @@
 #rename this file to Vars.ps1 
-    $ProjectPath = "C:\Projects"
+    [string]$ProjectPath = "C:\Projects"
 #### Script params
     [string] $Global:ProjectFolder        = "C:\DATA\Projects"
     [string] $Global:PathToAnalyzedFolder = "$Global:ProjectFolder\ErrorLogWatcher"

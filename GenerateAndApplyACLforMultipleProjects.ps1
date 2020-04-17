@@ -48,12 +48,17 @@ Initialize-Logging   $MyScriptRoot "Latest"
 
 [array]$IgnoreFolders = @(".vscode")
 
-$Projects = Get-ChildItem -path $Global:ProjectFolder -Directory
+$Projects = Get-ChildItem -path $Global:ProjectFolder -Directory  -ErrorAction SilentlyContinue
 
 Foreach($Project in $Projects){
     if (!($IgnoreFolders -contains $Project.Name)){
-        Write-Host $Project.FullName
-        & $MyScriptRoot\GenerateACL.ps1 $Project.FullName
+        $ProjectPath = $Project.FullName
+        Write-Host $ProjectPath
+        [string]$ACLFile = "$ProjectPath\ACL\ACL.xml"
+        [string]$RolesFile = "$ProjectPath\ACL\Roles.csv"
+        if (!((Test-Path $ACLFile) -and (Test-Path $RolesFile))) {
+            & $MyScriptRoot\GenerateACL.ps1 $Project.FullName
+        }
         & $MyScriptRoot\SetProjectPermissions.ps1 $Project.FullName
     }
 }

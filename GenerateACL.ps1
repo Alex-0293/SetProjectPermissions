@@ -8,8 +8,9 @@
     .EXAMPLE
 #>
 Param (
-    [string]$ScriptRoot
+    [string] $ScriptRoot
 )
+
 $ImportResult = Import-Module AlexkUtils  -PassThru
 if ($null -eq $ImportResult) {
     Modify-Host "Module 'AlexkUtils' does not loaded!"
@@ -52,13 +53,11 @@ $MyScriptRoot = Get-WorkDir
 Get-VarsFromFile    "$MyScriptRoot\Vars.ps1"
 Initialize-Logging   $MyScriptRoot "Latest"
 
-Write-Host "###############################################################################" -ForegroundColor Green
-Write-Host "Generate ACL to project [$ScriptRoot]" -ForegroundColor Green
-Write-Host ""
+Add-ToLog -Message "Generate ACL to project [$ScriptRoot]" -logFilePath $Global:LogFilePath -display -status "Info"
 
 [array]  $Objects       = @()
 [array]  $ExportObjects = @()
-[string] $ProjectName   = Split-Path -Path $Global:PathToAnalyzedFolder -Leaf
+[string] $ProjectName   = Split-Path -Path $ScriptRoot -Leaf
 
 ############# Role1 ################
 $RootFolder = [PSCustomObject]@{
@@ -258,7 +257,7 @@ Foreach ($item in $objects){
     }
 }
 
-$Folders = Get-ChildItem -path $ScriptRoot -Directory
+$Folders = Get-ChildItem -path $ScriptRoot -Directory  -ErrorAction SilentlyContinue
 ForEach($Folder in $Folders){
     if (!($ExportObjects.path -contains $Folder.FullName)){
         $NewFolder = [PSCustomObject]@{
@@ -284,12 +283,12 @@ ForEach($Folder in $Folders){
 #$ExportObjects | Sort-Object path | Format-Table -AutoSize
 #$Roles         | Format-Table -AutoSize
 
-Remove-Item -path "$ScriptRoot\ACL" -force -recurse  | Out-Null
+if (Test-Path "$ScriptRoot\ACL"){
+    Remove-Item -path "$ScriptRoot\ACL" -force -recurse  | Out-Null
+}
 New-Item -path "$ScriptRoot\ACL" -ItemType Directory | Out-Null
 
 $ExportObjects | Export-Clixml "$ScriptRoot\ACL\acl.xml" -Encoding utf8 -Force   
 $Roles | Export-Csv "$ScriptRoot\ACL\Roles.csv" -Encoding utf8 -Force 
 
-Write-Host ""
-Write-Host "ACL Generated!" -ForegroundColor Green
-Write-Host "###############################################################################" -ForegroundColor Green
+Add-ToLog -Message "ACL Generated!" -logFilePath $Global:LogFilePath -display -status "Info"
