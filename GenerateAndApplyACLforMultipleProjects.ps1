@@ -56,7 +56,7 @@ Foreach($Project in $Projects){
         Write-Host $ProjectPath
         [string]$ACLFile = "$ProjectPath\ACL\ACL.xml"
         [string]$RolesFile = "$ProjectPath\ACL\Roles.csv"
-        if (!((Test-Path $ACLFile) -and (Test-Path $RolesFile))) {
+        if (!((Test-Path $ACLFile) -and (Test-Path $RolesFile)) -or $Global:RegenerateACL) {
             & $MyScriptRoot\GenerateACL.ps1 $Project.FullName
         }
         & $MyScriptRoot\SetProjectPermissions.ps1 $Project.FullName

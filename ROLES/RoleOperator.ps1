@@ -4,7 +4,7 @@ $Global:RoleOperator = @()
 
 $PSO = [PSCustomObject]@{
     Name    = [string]$Operator
-    Member  = [string]@("ADVALORE\APP_SCHDSVC_ADMIN")
+    Member = [string]@("AB\APP_SCHEDULER")
 }
 $Global:RoleOperator += $PSO 
 

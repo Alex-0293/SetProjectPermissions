@@ -127,7 +127,7 @@ if ((Test-Path $ACLFile) -and (Test-Path $RolesFile)){
         Foreach ($Acl in $ACLs) {  
             $Rights += $Acl.ACL          
             $CurrentACL.SetAccessRule($Acl.ACL) 
-            $Owner = $Acl.owner
+            $Owner = $Global:Owner #$Acl.owner
         }
     
         $FileACL = Get-Acl $ItemPath
@@ -167,7 +167,7 @@ if ((Test-Path $ACLFile) -and (Test-Path $RolesFile)){
             }
         }     
         
-        if ($FileACL.owner -ne $CurrentACL.owner) {
+        if ($FileACL.owner -ne $Owner) {
             $CurrentACL.SetOwner($Owner)
             $RulesIsEqual = $False
         }
@@ -200,7 +200,7 @@ if ((Test-Path $ACLFile) -and (Test-Path $RolesFile)){
         Foreach ($Acl in $ACLs) {  
             $Rights += $Acl.ACL
             $CurrentACL.SetAccessRule($Acl.ACL) 
-            $Owner = $Acl.owner
+            $Owner = $Global:Owner #$Acl.owner
         }    
         
         $FileACL = Get-Acl $ItemPath
@@ -240,7 +240,7 @@ if ((Test-Path $ACLFile) -and (Test-Path $RolesFile)){
             }
         }    
 
-        if ($FileACL.owner -ne $CurrentACL.owner){
+        if ($FileACL.owner -ne $Owner){
             $CurrentACL.SetOwner($Owner)
             $RulesIsEqual = $False
         }

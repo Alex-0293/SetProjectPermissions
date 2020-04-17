@@ -4,7 +4,21 @@
 
 $PSO = [PSCustomObject]@{
     Name    = [string]$Administrator
-    Member  = [string]"Advalore\Admin1"
+    Member  = [string]"AB\User1"
+} 
+
+$Global:RoleAdministrator += $PSO
+
+$PSO = [PSCustomObject]@{
+    Name   = [string]$Administrator
+    Member = [string]"AB-113\User"
+} 
+
+$Global:RoleAdministrator += $PSO
+
+$PSO = [PSCustomObject]@{
+    Name   = [string]$Administrator
+    Member = [string]"AB\Admin1"
 } 
 
 $Global:RoleAdministrator += $PSO

@@ -2,3 +2,4 @@ Vars.ps1
 ACL/Roles.csv
 LOGS/Errors.log
 LOGS/SetPermissions.log
+Errors.log

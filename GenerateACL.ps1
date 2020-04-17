@@ -11,7 +11,7 @@ Param (
     [string] $ScriptRoot
 )
 
-$ImportResult = Import-Module AlexkUtils  -PassThru
+$ImportResult = Import-Module AlexkUtils  -PassThru -force
 if ($null -eq $ImportResult) {
     Modify-Host "Module 'AlexkUtils' does not loaded!"
     exit 1
@@ -61,7 +61,7 @@ Add-ToLog -Message "Generate ACL to project [$ScriptRoot]" -logFilePath $Global:
 
 ############# Role1 ################
 $RootFolder = [PSCustomObject]@{
-    Role  = $Global:RoleAdministrator.Name
+    Role  = $Global:RoleAdministrator[0].Name
     Path  = "$ScriptRoot"
     Right = @($Global:Rights.FC)
     Mode  = $Global:Modes.Replace
@@ -70,7 +70,7 @@ $RootFolder = [PSCustomObject]@{
 $Objects += $RootFolder
 
 $KEYSFolder = [PSCustomObject]@{
-    Role  = $Global:RoleAdministrator.Name
+    Role  = $Global:RoleAdministrator[0].Name
     Path  = "$ScriptRoot\KEYS"
     Right = @($Global:Rights.FC)
     Mode  = $Global:Modes.Replace
@@ -79,7 +79,7 @@ $KEYSFolder = [PSCustomObject]@{
 $Objects += $KEYSFolder
 
 $LOGSFolder = [PSCustomObject]@{
-    Role  = $Global:RoleAdministrator.Name
+    Role  = $Global:RoleAdministrator[0].Name
     Path  = "$ScriptRoot\LOGS"
     Right = @($Global:Rights.FC)
     Mode  = $Global:Modes.Replace
@@ -88,7 +88,7 @@ $LOGSFolder = [PSCustomObject]@{
 $Objects += $LOGSFolder
 
 $SETTINGSFolder = [PSCustomObject]@{
-    Role  = $Global:RoleAdministrator.Name
+    Role  = $Global:RoleAdministrator[0].Name
     Path  = "$ScriptRoot\SETTINGS"
     Right = @($Global:Rights.FC)
     Mode  = $Global:Modes.Replace
@@ -97,7 +97,7 @@ $SETTINGSFolder = [PSCustomObject]@{
 $Objects += $SETTINGSFolder
 
 $ACLFolder = [PSCustomObject]@{
-    Role  = $Global:RoleAdministrator.Name
+    Role  = $Global:RoleAdministrator[0].Name
     Path  = "$ScriptRoot\ACL"
     Right = @($Global:Rights.FC)
     Mode  = $Global:Modes.Replace
@@ -107,7 +107,7 @@ $Objects += $ACLFolder
 
 $FileName = "$ProjectName.ps1"
 $File = [PSCustomObject]@{
-    Role  = $Global:RoleAdministrator.Name
+    Role  = $Global:RoleAdministrator[0].Name
     Path  = "$ScriptRoot\$FileName"
     Right = @($Global:Rights.FC) 
     Mode  = $Global:Modes.Replace
@@ -117,7 +117,7 @@ $Objects += $File
 
 $FileName = "$ProjectName.xml"
 $File = [PSCustomObject]@{
-    Role  = $Global:RoleAdministrator.Name
+    Role  = $Global:RoleAdministrator[0].Name
     Path  = "$ScriptRoot\$FileName"
     Right = @($Global:Rights.FC) 
     Mode  = $Global:Modes.Replace
@@ -127,7 +127,7 @@ $Objects += $File
 
 $FileName = "Vars.ps1"
 $File = [PSCustomObject]@{
-    Role  = $Global:RoleAdministrator.Name
+    Role  = $Global:RoleAdministrator[0].Name
     Path  = "$ScriptRoot\$FileName"
     Right = @($Global:Rights.FC) 
     Mode  = $Global:Modes.Replace
@@ -137,7 +137,7 @@ $Objects += $File
 
 $FileName = ".gitignore"
 $File = [PSCustomObject]@{
-    Role  = $Global:RoleAdministrator.Name
+    Role  = $Global:RoleAdministrator[0].Name
     Path  = "$ScriptRoot\$FileName"
     Right = @($Global:Rights.FC) 
     Mode  = $Global:Modes.Replace
@@ -147,7 +147,7 @@ $Objects += $File
 
 $FileName = "Vars-empty.ps1"
 $File = [PSCustomObject]@{
-    Role  = $Global:RoleAdministrator.Name
+    Role  = $Global:RoleAdministrator[0].Name
     Path  = "$ScriptRoot\$FileName"
     Right = @($Global:Rights.FC) 
     Mode  = $Global:Modes.Replace 
@@ -157,7 +157,7 @@ $Objects += $File
 
 ############# Role2 ################
 $RootFolder = [PSCustomObject]@{
-    Role  = $Global:RoleOperator.Name
+    Role  = $Global:RoleOperator[0].Name
     Path  = "$ScriptRoot"
     Right = @($Global:Rights.Modify, $Global:Rights.Execute) 
     Mode  = $Global:Modes.Replace
@@ -166,7 +166,7 @@ $RootFolder = [PSCustomObject]@{
 $Objects += $RootFolder
 
 $KEYSFolder = [PSCustomObject]@{
-    Role  = $Global:RoleOperator.Name
+    Role  = $Global:RoleOperator[0].Name
     Path  = "$ScriptRoot\KEYS"
     Right = @($Global:Rights.Read)
     Mode  = $Global:Modes.Replace
@@ -175,7 +175,7 @@ $KEYSFolder = [PSCustomObject]@{
 $Objects += $KEYSFolder
 
 $LOGSFolder = [PSCustomObject]@{
-    Role  = $Global:RoleOperator.Name
+    Role  = $Global:RoleOperator[0].Name
     Path  = "$ScriptRoot\LOGS"
     Right = @($Global:Rights.Read, $Global:Rights.Modify)
     Mode  = $Global:Modes.Replace
@@ -184,7 +184,7 @@ $LOGSFolder = [PSCustomObject]@{
 $Objects += $LOGSFolder
 
 $SETTINGSFolder = [PSCustomObject]@{
-    Role  = $Global:RoleOperator.Name
+    Role  = $Global:RoleOperator[0].Name
     Path  = "$ScriptRoot\SETTINGS"
     Right = @($Global:Rights.Read)
     Mode  = $Global:Modes.Replace
@@ -193,7 +193,7 @@ $SETTINGSFolder = [PSCustomObject]@{
 $Objects += $SETTINGSFolder
 
 $ACLFolder = [PSCustomObject]@{
-    Role  = $Global:RoleOperator.Name
+    Role  = $Global:RoleOperator[0].Name
     Path  = "$ScriptRoot\ACL"
     Right = @($Global:Rights.Deny)
     Mode  = $Global:Modes.Replace
@@ -203,7 +203,7 @@ $Objects += $ACLFolder
 
 $FileName = "$ProjectName.ps1"
 $File = [PSCustomObject]@{
-    Role  = $Global:RoleOperator.Name
+    Role  = $Global:RoleOperator[0].Name
     Path  = "$ScriptRoot\$FileName"
     Right = @($Global:Rights.Read, $Global:Rights.Execute) 
     Mode  = $Global:Modes.Replace
@@ -213,7 +213,7 @@ $Objects += $File
 
 $FileName = "$ProjectName.xml"
 $File = [PSCustomObject]@{
-    Role  = $Global:RoleOperator.Name
+    Role  = $Global:RoleOperator[0].Name
     Path  = "$ScriptRoot\$FileName"
     Right = @($Global:Rights.Deny) 
     Mode  = $Global:Modes.Replace
@@ -223,7 +223,7 @@ $Objects += $File
 
 $FileName = "Vars.ps1"
 $File = [PSCustomObject]@{
-    Role  = $Global:RoleOperator.Name
+    Role  = $Global:RoleOperator[0].Name
     Path  = "$ScriptRoot\$FileName"
     Right = @($Global:Rights.Read, $Global:Rights.Execute)
     Mode  = $Global:Modes.Replace
@@ -233,7 +233,7 @@ $Objects += $File
 
 $FileName = ".gitignore"
 $File = [PSCustomObject]@{
-    Role  = $Global:RoleOperator.Name
+    Role  = $Global:RoleOperator[0].Name
     Path  = "$ScriptRoot\$FileName"
     Right = @($Global:Rights.Deny)
     Mode  = $Global:Modes.Replace
@@ -243,7 +243,7 @@ $Objects += $File
 
 $FileName = "Vars-empty.ps1"
 $File = [PSCustomObject]@{
-    Role  = $Global:RoleOperator.Name
+    Role  = $Global:RoleOperator[0].Name
     Path  = "$ScriptRoot\$FileName"
     Right = @($Global:Rights.Deny)
     Mode  = $Global:Modes.Replace 
@@ -261,7 +261,7 @@ $Folders = Get-ChildItem -path $ScriptRoot -Directory  -ErrorAction SilentlyCont
 ForEach($Folder in $Folders){
     if (!($ExportObjects.path -contains $Folder.FullName)){
         $NewFolder = [PSCustomObject]@{
-            Role  = $Global:RoleOperator.Name
+            Role  = $Global:RoleOperator[0].Name
             Path  = $Folder.FullName
             Right = @($Global:DefaultOperatorRight)
             Mode  = $Global:Modes.Replace
@@ -270,7 +270,7 @@ ForEach($Folder in $Folders){
         $ExportObjects += $NewFolder
 
         $NewFolder = [PSCustomObject]@{
-            Role  = $Global:RoleAdministrator.Name
+            Role  = $Global:RoleAdministrator[0].Name
             Path  = $Folder.FullName
             Right = @($Global:DefaultAdministratorRight)
             Mode  = $Global:Modes.Replace
