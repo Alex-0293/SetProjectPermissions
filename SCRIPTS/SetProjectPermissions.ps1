@@ -46,63 +46,63 @@ Function Set-NTFSAccess ($Path, $Acl) {
     if (Test-Path $Path) {
         $Object = Get-Item -Path $Path              
         foreach ($Role in $Global:LocalRoles) {
-            if ($Role.name -eq $Acl.role){                    
-                if ($Acl.mode -eq $Global:Modes.replace) {                    
-                    if ($Acl.Right -ne $Global:Rights.deny) {
-                        $RuleType            = "Allow"
-                        $Rights              = $Acl.Right
-
-                    }
-                    Else {
-                        $RuleType            = "Deny"
-                        $Rights              = $Global:Rights.Modify
-                    }
-                    
-                    if ($Object.PSIsContainer) {
-                        $InheritSettings     = "ContainerInherit, ObjectInherit"  
-                    }
-                    Else{
-                        $InheritSettings     = "None" 
-                    }
-                    
-                    $user                = $Role.Member                    
-                    $PropagationSettings = "None"
-                    $Permissions         = $user, $Rights, $InheritSettings, $PropagationSettings, $RuleType
-                    $AccessRule          = New-Object System.Security.AccessControl.FileSystemAccessRule -ArgumentList $Permissions                    
-                    $PSO = [PSCustomObject]@{
-                        Path   = $Path
-                        Folder = $Object.PSIsContainer
-                        ACL    = $AccessRule
-                        Owner  = $Acl.owner.value
-                    } 
-                    $Global:Array += $PSO
+            if ($Role.name -eq $Acl.role){   
+                if ($Acl.Right -ne $Global:Rights.deny) {
+                    $RuleType            = "Allow"
+                    $Rights              = $Acl.Right
                 }
-            }
+                Else {
+                    $RuleType            = "Deny"
+                    $Rights              = $Global:Rights.FC
+                }
+                
+                if ($Object.PSIsContainer) {
+                    $InheritSettings     = "ContainerInherit, ObjectInherit"  
+                }
+                Else{
+                    $InheritSettings     = "None" 
+                }
+                
+                $user                = $Role.Member                    
+                $PropagationSettings = "None"
+                $Permissions         = $user, $Rights, $InheritSettings, $PropagationSettings, $RuleType
+                $AccessRule          = New-Object System.Security.AccessControl.FileSystemAccessRule -ArgumentList $Permissions                    
+                $PSO = [PSCustomObject]@{
+                    Path   = $Path
+                    Folder = $Object.PSIsContainer
+                    ACL    = $AccessRule
+                    Owner  = $Global:Owner
+                    Mode   = $Acl.Mode
+                } 
+                $Global:Array += $PSO
+            }            
         }
     }
-
 }
-if (!$ScriptRoot){
+
+[string]$MyScriptRoot        = Get-WorkDir
+[string]$Global:ProjectRoot  = Split-Path $MyScriptRoot -parent
+
+Get-VarsFromFile    "$ProjectRoot\VARS\Vars.ps1"
+Initialize-Logging   $ProjectRoot "Latest"
+
+if (!$ScriptRoot) {
     $ScriptRoot = $Global:PathToAnalyzedFolder
     Clear-Host
 }
 
-
-$MyScriptRoot = Get-WorkDir
-
-Get-VarsFromFile    "$MyScriptRoot\Vars.ps1"
-Initialize-Logging   $MyScriptRoot "Latest"
-
-[string]$ACLFile   = "$ScriptRoot\ACL\ACL.xml"
+[string]$ACLFile   = "$ScriptRoot\ACL\ACL.csv"
 [string]$RolesFile = "$ScriptRoot\ACL\Roles.csv"
+[string]$OwnerFile = "$ScriptRoot\ACL\Owner.csv"
 
-if ((Test-Path $ACLFile) -and (Test-Path $RolesFile)){
+if ((Test-Path $ACLFile) -and (Test-Path $RolesFile) -and (Test-Path $OwnerFile)) {
     
     Add-ToLog -Message "Set NTFS permissions to project [$ScriptRoot]." -logFilePath $Global:LogFilePath -display -status "Info"
     [array] $Global:LocalRoles  = @()
 
     $Global:LocalRoles = Import-Csv -path $RolesFile -Encoding utf8
-    $ACL = Import-Clixml $ACLFile 
+    $ACL               = Import-Csv -path $ACLFile -Encoding utf8
+    $Global:Owner      = (Import-Csv -path $OwnerFile -Encoding utf8)[0].Owner
 
     [array] $Global:Array = @()
     foreach ($item in $ACL){
@@ -117,17 +117,26 @@ if ((Test-Path $ACLFile) -and (Test-Path $RolesFile)){
 
         [void]$CurrentACL.SetAccessRuleProtection($true, $false) # Delete inheritance  
 
-        $ACLToRemove = $CurrentACL.Access | Where-Object { $_.IsInherited -eq $false}       
-        foreach ($Item1 in  $ACLToRemove){
-            [void]$CurrentACL.RemoveAccessRule($Item1) 
-        } 
-
         $ACLs = $Global:Array | Where-Object { $_.path -eq $ItemPath }
         [array]$Rights = @()
         Foreach ($Acl in $ACLs) {  
+            if ($Acl.mode -eq $Global:Modes.replace) {  
+                $ACLToRemove = $CurrentACL.Access | Where-Object { ($_.IsInherited -eq $false) -and ($_.IdentityReference -eq $Acl.Acl[0].IdentityReference) }       
+                foreach ($Item1 in  $ACLToRemove) {
+                    [void]$CurrentACL.RemoveAccessRule($Item1) 
+                } 
+            }            
+            
             $Rights += $Acl.ACL          
-            $CurrentACL.SetAccessRule($Acl.ACL) 
-            $Owner = $Global:Owner #$Acl.owner
+            
+            if ($Acl.mode -eq $Global:Modes.replace) {
+                $CurrentACL.SetAccessRule($Acl.ACL) 
+            }
+            Else {
+                $CurrentACL.AddAccessRule($Acl.ACL)  
+            }
+
+            $Owner = $Global:Owner
         }
     
         $FileACL = Get-Acl $ItemPath
@@ -168,7 +177,7 @@ if ((Test-Path $ACLFile) -and (Test-Path $RolesFile)){
         }     
         
         if ($FileACL.owner -ne $Owner) {
-            $CurrentACL.SetOwner($Owner)
+            $CurrentACL.SetOwner([System.Security.Principal.NTAccount]"$Owner")
             $RulesIsEqual = $False
         }
         
@@ -190,18 +199,27 @@ if ((Test-Path $ACLFile) -and (Test-Path $RolesFile)){
 
         [void]$CurrentACL.SetAccessRuleProtection($true, $false) # Delete inheritance  
 
-        $ACLToRemove = $CurrentACL.Access | Where-Object { $_.IsInherited -eq $false }       
-        foreach ($Item1 in  $ACLToRemove) {
-            [void]$CurrentACL.RemoveAccessRule($Item1) 
-        } 
-
         $ACLs = $Global:Array | Where-Object { $_.path -eq $ItemPath }
         [array]$Rights = @()
         Foreach ($Acl in $ACLs) {  
-            $Rights += $Acl.ACL
-            $CurrentACL.SetAccessRule($Acl.ACL) 
+            if ($Acl.mode -eq $Global:Modes.replace) {  
+                $ACLToRemove = $CurrentACL.Access | Where-Object { ($_.IsInherited -eq $false) -and ($_.IdentityReference -eq $Acl.Acl[0].IdentityReference) }       
+                foreach ($Item1 in  $ACLToRemove) {
+                    [void]$CurrentACL.RemoveAccessRule($Item1) 
+                } 
+            }
+            
+            $Rights += $Acl.ACL   
+                   
+            if ($Acl.mode -eq $Global:Modes.replace) {
+                $CurrentACL.SetAccessRule($Acl.ACL) 
+            }
+            Else {
+                $CurrentACL.AddAccessRule($Acl.ACL)  
+            }
+
             $Owner = $Global:Owner #$Acl.owner
-        }    
+        }  
         
         $FileACL = Get-Acl $ItemPath
         
@@ -241,7 +259,7 @@ if ((Test-Path $ACLFile) -and (Test-Path $RolesFile)){
         }    
 
         if ($FileACL.owner -ne $Owner){
-            $CurrentACL.SetOwner($Owner)
+            $CurrentACL.SetOwner([System.Security.Principal.NTAccount]"$Owner")
             $RulesIsEqual = $False
         }
         

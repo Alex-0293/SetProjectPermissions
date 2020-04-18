@@ -3,3 +3,5 @@ ACL/Roles.csv
 LOGS/Errors.log
 LOGS/SetPermissions.log
 Errors.log
+ACL/Owner.csv
+ROLES/Members.ps1
