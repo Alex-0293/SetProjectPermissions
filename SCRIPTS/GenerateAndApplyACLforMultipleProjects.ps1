@@ -52,7 +52,7 @@ foreach ($Folder in $global:FoldersToApplyPath) {
     $Projects = Get-ChildItem -path $Folder -Directory  -ErrorAction SilentlyContinue
 
     Foreach($Project in $Projects){
-        if (!($IgnoreFolders -contains $Project.Name)){
+        if (!($FoldersToIgnoreName -contains $Project.Name)) {
             $ProjectPath = $Project.FullName
             Write-Host $ProjectPath
             [string]$ACLFile = "$ProjectPath\ACL\ACL.xml"
