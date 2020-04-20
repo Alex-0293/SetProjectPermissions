@@ -36,18 +36,34 @@ function Get-WorkDir () {
     }
     return $ScriptRoot
 }
+Function Initialize-Script   () {
+    [string]$Global:MyScriptRoot = Get-WorkDir
+    [string]$Global:GlobalSettingsPath = "C:\DATA\Projects\GlobalSettings\SETTINGS\Settings.ps1"
+
+    Get-SettingsFromFile -SettingsFile $Global:GlobalSettingsPath
+    if ($GlobalSettingsSuccessfullyLoaded) {    
+        Get-SettingsFromFile -SettingsFile "$ProjectRoot\$($Global:SETTINGSFolder)\Settings.ps1"
+        if ($Global:LocalSettingsSuccessfullyLoaded) {
+            Initialize-Logging   "$ProjectRoot\$LOGSFolder\$ErrorsLogFileName" "Latest"
+            Write-Host "Logging initialized."            
+        }
+        Else {
+            Add-ToLog -Message "[Error] Error loading local settings!" -logFilePath "$(Split-Path -path $Global:MyScriptRoot -parent)\$LOGSFolder\$ErrorsLogFileName" -Display -Status "Error" -Format 'yyyy-MM-dd HH:mm:ss'
+            Exit 1 
+        }
+    }
+    Else { 
+        Add-ToLog -Message "[Error] Error loading global settings!" -logFilePath "$(Split-Path -path $Global:MyScriptRoot -parent)\LOGS\Errors.log" -Display -Status "Error" -Format 'yyyy-MM-dd HH:mm:ss'
+        Exit 1
+    }
+}
 # Error trap
 trap {
     Get-ErrorReporting $_    
     exit 1
 }
 #########################################################################
-[string]$Global:MyScriptRoot = Get-WorkDir
-[string]$Global:GlobalSettingsPath = "C:\DATA\Projects\GlobalSettings\SETTINGS\Settings.ps1"
-
-Get-SettingsFromFile -SettingsFile $Global:GlobalSettingsPath
-Get-SettingsFromFile -SettingsFile "$ProjectRoot\$SETTINGSFolder\Settings.ps1"
-Initialize-Logging   "$ProjectRoot\$LOGSFolder\$ErrorsLogFileName" "Latest"
+Initialize-Script
 
 if (!$ScriptRoot) {
     $ScriptRoot = $Global:PathToAnalyzedFolder
@@ -171,9 +187,9 @@ if (Test-Path $ScriptRoot){
             Owner = $Global:Owner
         }
 
-        $ExportObjects | Export-Csv "$ScriptRoot\ACL\Access.csv" -Encoding utf8 -Force   
-        $Roles | Export-Csv "$ScriptRoot\ACL\Roles.csv" -Encoding utf8 -Force    
-        $Owner | Export-Csv "$ScriptRoot\ACL\Owner.csv" -Encoding utf8 -Force 
+        $ExportObjects | Export-Csv "$ScriptRoot\$ACLFolder\$AccessFileName" -Encoding utf8 -Force   
+        $Roles | Export-Csv "$ScriptRoot\$ACLFolder\$RolesFileName" -Encoding utf8 -Force    
+        $Owner | Export-Csv "$ScriptRoot\$ACLFolder\$OwnerFileName" -Encoding utf8 -Force 
 
         Add-ToLog -Message "ACL Generated!" -logFilePath $Global:ScriptLogFilePath -display -status "Info"
     }

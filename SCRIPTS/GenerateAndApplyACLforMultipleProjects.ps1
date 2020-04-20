@@ -32,6 +32,27 @@ function Get-WorkDir () {
     }
     return $MyScriptRoot
 }
+Function Initialize-Script   () {
+    [string]$Global:MyScriptRoot = Get-WorkDir
+    [string]$Global:GlobalSettingsPath = "C:\DATA\Projects\GlobalSettings\SETTINGS\Settings.ps1"
+
+    Get-SettingsFromFile -SettingsFile $Global:GlobalSettingsPath
+    if ($GlobalSettingsSuccessfullyLoaded) {    
+        Get-SettingsFromFile -SettingsFile "$ProjectRoot\$($Global:SETTINGSFolder)\Settings.ps1"
+        if ($Global:LocalSettingsSuccessfullyLoaded) {
+            Initialize-Logging   "$ProjectRoot\$LOGSFolder\$ErrorsLogFileName" "Latest"
+            Write-Host "Logging initialized."            
+        }
+        Else {
+            Add-ToLog -Message "[Error] Error loading local settings!" -logFilePath "$(Split-Path -path $Global:MyScriptRoot -parent)\$LOGSFolder\$ErrorsLogFileName" -Display -Status "Error" -Format 'yyyy-MM-dd HH:mm:ss'
+            Exit 1 
+        }
+    }
+    Else { 
+        Add-ToLog -Message "[Error] Error loading global settings!" -logFilePath "$(Split-Path -path $Global:MyScriptRoot -parent)\LOGS\Errors.log" -Display -Status "Error" -Format 'yyyy-MM-dd HH:mm:ss'
+        Exit 1
+    }
+}
 # Error trap
 trap {
     Get-ErrorReporting $_    
@@ -40,24 +61,20 @@ trap {
 #########################################################################
 
 Clear-Host
-
-[string]$Global:MyScriptRoot = Get-WorkDir
-[string]$Global:GlobalSettingsPath = "C:\DATA\Projects\GlobalSettings\SETTINGS\Settings.ps1"
-
-Get-SettingsFromFile -SettingsFile $Global:GlobalSettingsPath
-Get-SettingsFromFile -SettingsFile "$ProjectRoot\$SETTINGSFolder\Settings.ps1"
-Initialize-Logging   "$ProjectRoot\$LOGSFolder\$ErrorsLogFileName" "Latest"
+Initialize-Script
 
 foreach ($Folder in $global:FoldersToApplyPath) {
     $Projects = Get-ChildItem -path $Folder -Directory  -ErrorAction SilentlyContinue
-
     Foreach($Project in $Projects){
         if (!($FoldersToIgnoreName -contains $Project.Name)) {
             $ProjectPath = $Project.FullName
             Write-Host $ProjectPath
-            [string]$ACLFile = "$ProjectPath\ACL\ACL.xml"
-            [string]$RolesFile = "$ProjectPath\ACL\Roles.csv"
-            if (!((Test-Path $ACLFile) -and (Test-Path $RolesFile)) -or $Global:RegenerateACL) {
+            [string]$ACLFilePath   = "$ProjectPath\$ACLFolder\$AccessFileName"
+            [string]$RolesFilePath = "$ProjectPath\$ACLFolder\$RolesFileName"
+            [string]$OwnerFilePath = "$ProjectPath\$ACLFolder\$OwnerFileName"
+            $ACLFilesExist = ((Test-Path $ACLFilePath) -and (Test-Path $RolesFilePath) -and (Test-Path $OwnerFilePath))
+            $ACLFilesExist
+            if (!$ACLFilesExist -or $Global:RegenerateACL) {
                 & $MyScriptRoot\GenerateACL.ps1 $ProjectPath
             }
             & $MyScriptRoot\SetProjectPermissions.ps1 $ProjectPath

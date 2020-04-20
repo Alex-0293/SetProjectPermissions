@@ -6,3 +6,4 @@ LOGS/Errors.log
 LOGS/SetPermissions.log
 LOGS/SetProjectPermissions.log
 SETTINGS/Settings.ps1
+LOGS/Daily.log
