@@ -42,159 +42,106 @@ trap {
     exit 1
 }
 #########################################################################
-[string]$MyScriptRoot        = Get-WorkDir
-[string]$Global:ProjectRoot  = Split-Path $MyScriptRoot -parent
+[string]$Global:MyScriptRoot = Get-WorkDir
+[string]$Global:GlobalSettingsPath = "C:\DATA\Projects\GlobalSettings\SETTINGS\Settings.ps1"
 
-Get-VarsFromFile    "$ProjectRoot\VARS\Vars.ps1"
-Initialize-Logging   $ProjectRoot "Latest"
+Get-SettingsFromFile -SettingsFile $Global:GlobalSettingsPath
+Get-SettingsFromFile -SettingsFile "$ProjectRoot\$SETTINGSFolder\Settings.ps1"
+Initialize-Logging   "$ProjectRoot\$LOGSFolder\$ErrorsLogFileName" "Latest"
 
 if (!$ScriptRoot) {
     $ScriptRoot = $Global:PathToAnalyzedFolder
     Clear-Host
 }
 
-If ($Global:RegenerateACL) {
-    Add-ToLog -Message "Generate ACL to project [$ScriptRoot]" -logFilePath $Global:LogFilePath -display -status "Info"
+If ($Global:RegenerateACL -or !(Test-Path "$ScriptRoot\$ACLFolder")) {
+    Add-ToLog -Message "Generate ACL to project [$ScriptRoot]" -logFilePath $Global:ScriptLogFilePath -display -status "Info"
 
-    [array]  $Objects       = @()
-    [array]  $ExportObjects = @()
-    [string] $ProjectName   = Split-Path -Path $ScriptRoot -Leaf
+    [array]  $Objects            = @()
+    [array]  $ExportObjects      = @()
+    [array]  $SPECIALFoldersCopy = @()
 
     ############# RoleAdministrator ################
-    $RootFolder = [PSCustomObject]@{
-        Role  = $Global:RoleAdministrator[0].Name
-        Path  = "$ScriptRoot"
-        Right = @($Global:Rights.FC) -join ", "
-        Mode  = $Global:Modes.Replace
-    }
-    $Objects += $RootFolder
+    $SPECIALFoldersCopy = $Global:SPECIALFolders
+    $Global:SPECIALFoldersCopy += ""
 
-    $KEYSFolder = [PSCustomObject]@{
-        Role  = $Global:RoleAdministrator[0].Name
-        Path  = "$ScriptRoot\KEYS"
-        Right = @($Global:Rights.FC) -join ", "
-        Mode  = $Global:Modes.Replace
+    foreach ($Folder in $SPECIALFoldersCopy) {
+        $ObjFolder = [PSCustomObject]@{
+            Role  = $Global:RoleAdministrator[0].Name
+            Path  = "$ScriptRoot\$Folder"
+            Right = @($Global:Rights.FC) -join ", "
+            Mode  = $Global:Modes.Replace
+        }
+        $Objects += $ObjFolder
     }
-    $Objects += $KEYSFolder
 
-    $LOGSFolder = [PSCustomObject]@{
-        Role  = $Global:RoleAdministrator[0].Name
-        Path  = "$ScriptRoot\LOGS"
-        Right = @($Global:Rights.FC) -join ", "
-        Mode  = $Global:Modes.Replace
-    }
-    $Objects += $LOGSFolder
-
-    $SETTINGSFolder = [PSCustomObject]@{
-        Role  = $Global:RoleAdministrator[0].Name
-        Path  = "$ScriptRoot\SETTINGS"
-        Right = @($Global:Rights.FC) -join ", "
-        Mode  = $Global:Modes.Replace
-    }
-    $Objects += $SETTINGSFolder
-
-    $ACLFolder = [PSCustomObject]@{
-        Role  = $Global:RoleAdministrator[0].Name
-        Path  = "$ScriptRoot\ACL"
-        Right = @($Global:Rights.FC) -join ", "
-        Mode  = $Global:Modes.Replace
-    }
-    $Objects += $ACLFolder
-
-    $DATAFolder = [PSCustomObject]@{
-        Role  = $Global:RoleAdministrator[0].Name
-        Path  = "$ScriptRoot\DATA"
-        Right = @($Global:Rights.FC) -join ", "
-        Mode  = $Global:Modes.Replace
-    }
-    $Objects += $DATAFolder
-
-    $SCRIPTSFolder = [PSCustomObject]@{
-        Role  = $Global:RoleAdministrator[0].Name
-        Path  = "$ScriptRoot\SCRIPTS"
-        Right = @($Global:Rights.FC) -join ", "
-        Mode  = $Global:Modes.Replace
-    }
-    $Objects += $SCRIPTSFolder
-
-    $VARSFolder = [PSCustomObject]@{
-        Role  = $Global:RoleAdministrator[0].Name
-        Path  = "$ScriptRoot\VARS"
-        Right = @($Global:Rights.FC) -join ", "
-        Mode  = $Global:Modes.Replace
-    }
-    $Objects += $VARSFolder
     ############# RoleOperator ################
-    $RootFolder = [PSCustomObject]@{
+    $ObjFolder = [PSCustomObject]@{
         Role  = $Global:RoleOperator[0].Name
-        Path  = "$ScriptRoot"
-        Right = @($Global:Rights.Modify, $Global:Rights.Execute)  -join ", "
+        Path  = "$ScriptRoot\"
+        Right = @($Global:Rights.Modify)  -join ", "
         Mode  = $Global:Modes.Replace
     }
-    $Objects += $RootFolder
+    $Objects += $ObjFolder  
 
-    $KEYSFolder = [PSCustomObject]@{
+    $ObjFolder = [PSCustomObject]@{
         Role  = $Global:RoleOperator[0].Name
-        Path  = "$ScriptRoot\KEYS"
-        Right = @($Global:Rights.Read) -join ", "
-        Mode  = $Global:Modes.Replace
-    }
-    $Objects += $KEYSFolder
-
-    $LOGSFolder = [PSCustomObject]@{
-        Role  = $Global:RoleOperator[0].Name
-        Path  = "$ScriptRoot\LOGS"
-        Right = @($Global:Rights.Read, $Global:Rights.Modify) -join ", "
-        Mode  = $Global:Modes.Replace
-    }
-    $Objects += $LOGSFolder
-
-    $SETTINGSFolder = [PSCustomObject]@{
-        Role  = $Global:RoleOperator[0].Name
-        Path  = "$ScriptRoot\SETTINGS"
-        Right = @($Global:Rights.Read) -join ", "
-        Mode  = $Global:Modes.Replace
-    }
-    $Objects += $SETTINGSFolder
-
-    $ACLFolder = [PSCustomObject]@{
-        Role  = $Global:RoleOperator[0].Name
-        Path  = "$ScriptRoot\ACL"
-        Right = @($Global:Rights.Deny) -join ", "
-        Mode  = $Global:Modes.Replace
-    }
-    $Objects += $ACLFolder
-
-    $DATAFolder = [PSCustomObject]@{
-        Role  = $Global:RoleOperator[0].Name
-        Path  = "$ScriptRoot\DATA"
+        Path  = "$ScriptRoot\$DATAFolder"
         Right = @($Global:Rights.Modify) -join ", "
         Mode  = $Global:Modes.Replace
     }
-    $Objects += $DATAFolder
+    $Objects += $ObjFolder
 
-    $SCRIPTSFolder = [PSCustomObject]@{
+    $ObjFolder = [PSCustomObject]@{
         Role  = $Global:RoleOperator[0].Name
-        Path  = "$ScriptRoot\SCRIPTS"
+        Path  = "$ScriptRoot\$ACLFolder"
+        Right = @($Global:Rights.Deny) -join ", "
+        Mode  = $Global:Modes.Replace
+    }
+    $Objects += $ObjFolder   
+    
+    $ObjFolder = [PSCustomObject]@{
+        Role  = $Global:RoleOperator[0].Name
+        Path  = "$ScriptRoot\$LOGSFolder"
+        Right = @($Global:Rights.Read, $Global:Rights.Write) -join ", "
+        Mode  = $Global:Modes.Replace
+    }
+    $Objects += $ObjFolder  
+
+    $ObjFolder = [PSCustomObject]@{
+        Role  = $Global:RoleOperator[0].Name
+        Path  = "$ScriptRoot\$SCRIPTSFolder"
         Right = @($Global:Rights.Read, $Global:Rights.Execute) -join ", "
         Mode  = $Global:Modes.Replace
     }
-    $Objects += $SCRIPTSFolder
-
-    $VARSFolder = [PSCustomObject]@{
+    $Objects += $ObjFolder  
+    
+    $ObjFolder = [PSCustomObject]@{
         Role  = $Global:RoleOperator[0].Name
-        Path  = "$ScriptRoot\VARS"
+        Path  = "$ScriptRoot\$SETTINGSFolder"
         Right = @($Global:Rights.Read, $Global:Rights.Execute) -join ", "
         Mode  = $Global:Modes.Replace
     }
-    $Objects += $VARSFolder
+    $Objects += $ObjFolder   
+    
+    $ObjFolder = [PSCustomObject]@{
+        Role  = $Global:RoleOperator[0].Name
+        Path  = "$ScriptRoot\$VALUESFolder"
+        Right = @($Global:Rights.Read) -join ", "
+        Mode  = $Global:Modes.Replace
+    }
+    $Objects += $ObjFolder 
 
-    Foreach ($item in $objects){
+    if (Test-Path "$ScriptRoot\$ACLFolder") {
+        Remove-Item -path "$ScriptRoot\$ACLFolder" -force -recurse | Out-Null
+    }
+    New-Item -path "$ScriptRoot\$ACLFolder" -ItemType Directory | Out-Null
+    
+    Foreach ($item in $Objects){
         If(test-path $Item.path){
             $ExportObjects += $Item
         }
     }
-
 
     $Objects = Get-ChildItem -path $ScriptRoot -ErrorAction SilentlyContinue
     ForEach($Object in $Objects){
@@ -218,23 +165,18 @@ If ($Global:RegenerateACL) {
     }
  
     $ExportObjects | Sort-Object path | Format-Table -AutoSize
-    #$Roles         | Format-Table -AutoSize
-
-    if (Test-Path "$ScriptRoot\ACL"){
-        Remove-Item -path "$ScriptRoot\ACL" -force -recurse  | Out-Null
-    }
-    New-Item -path "$ScriptRoot\ACL" -ItemType Directory | Out-Null
+    #$Roles         | Format-Table -AutoSize   
     
     $Owner = [PSCustomObject]@{
         Owner = $Global:Owner
     }
 
-    $ExportObjects | Export-Csv "$ScriptRoot\ACL\ACL.csv" -Encoding utf8 -Force   
+    $ExportObjects | Export-Csv "$ScriptRoot\ACL\Access.csv" -Encoding utf8 -Force   
     $Roles | Export-Csv "$ScriptRoot\ACL\Roles.csv" -Encoding utf8 -Force    
     $Owner | Export-Csv "$ScriptRoot\ACL\Owner.csv" -Encoding utf8 -Force 
 
-    Add-ToLog -Message "ACL Generated!" -logFilePath $Global:LogFilePath -display -status "Info"
+    Add-ToLog -Message "ACL Generated!" -logFilePath $Global:ScriptLogFilePath -display -status "Info"
 }
 Else {
-    Add-ToLog -Message "ACL Generation disabled." -logFilePath $Global:LogFilePath -display -status "Warning"
+    Add-ToLog -Message "ACL Generation disabled." -logFilePath $Global:ScriptLogFilePath -display -status "Warning"
 }

@@ -1,7 +1,8 @@
-Vars.ps1
+ACL/Access.csv
+ACL/Owner.csv
 ACL/Roles.csv
+DATA/ROLES/Members.ps1
 LOGS/Errors.log
 LOGS/SetPermissions.log
-Errors.log
-ACL/Owner.csv
-ROLES/Members.ps1
+LOGS/SetProjectPermissions.log
+SETTINGS/Settings.ps1

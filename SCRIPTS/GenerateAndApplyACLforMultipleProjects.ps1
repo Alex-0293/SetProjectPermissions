@@ -41,25 +41,26 @@ trap {
 
 Clear-Host
 
-[string]$MyScriptRoot        = Get-WorkDir
-[string]$Global:ProjectRoot  = Split-Path $MyScriptRoot -parent
+[string]$Global:MyScriptRoot = Get-WorkDir
+[string]$Global:GlobalSettingsPath = "C:\DATA\Projects\GlobalSettings\SETTINGS\Settings.ps1"
 
-Get-VarsFromFile    "$ProjectRoot\VARS\Vars.ps1"
-Initialize-Logging   $ProjectRoot "Latest"
+Get-SettingsFromFile -SettingsFile $Global:GlobalSettingsPath
+Get-SettingsFromFile -SettingsFile "$ProjectRoot\$SETTINGSFolder\Settings.ps1"
+Initialize-Logging   "$ProjectRoot\$LOGSFolder\$ErrorsLogFileName" "Latest"
 
-[array]$IgnoreFolders = @(".vscode")
+foreach ($Folder in $global:FoldersToApplyPath) {
+    $Projects = Get-ChildItem -path $Folder -Directory  -ErrorAction SilentlyContinue
 
-$Projects = Get-ChildItem -path $Global:ProjectFolder -Directory  -ErrorAction SilentlyContinue
-
-Foreach($Project in $Projects){
-    if (!($IgnoreFolders -contains $Project.Name)){
-        $ProjectPath = $Project.FullName
-        Write-Host $ProjectPath
-        [string]$ACLFile = "$ProjectPath\ACL\ACL.xml"
-        [string]$RolesFile = "$ProjectPath\ACL\Roles.csv"
-        if (!((Test-Path $ACLFile) -and (Test-Path $RolesFile)) -or $Global:RegenerateACL) {
-            & $MyScriptRoot\GenerateACL.ps1 $Project.FullName
+    Foreach($Project in $Projects){
+        if (!($IgnoreFolders -contains $Project.Name)){
+            $ProjectPath = $Project.FullName
+            Write-Host $ProjectPath
+            [string]$ACLFile = "$ProjectPath\ACL\ACL.xml"
+            [string]$RolesFile = "$ProjectPath\ACL\Roles.csv"
+            if (!((Test-Path $ACLFile) -and (Test-Path $RolesFile)) -or $Global:RegenerateACL) {
+                & $MyScriptRoot\GenerateACL.ps1 $ProjectPath
+            }
+            & $MyScriptRoot\SetProjectPermissions.ps1 $ProjectPath
         }
-        & $MyScriptRoot\SetProjectPermissions.ps1 $Project.FullName
     }
 }

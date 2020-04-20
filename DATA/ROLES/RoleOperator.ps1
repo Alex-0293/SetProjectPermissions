@@ -1,4 +1,4 @@
 [String] $Global:DefaultOperatorRight      = $Global:Rights.Deny
 $Role = "Operator"
-Get-VarsFromFile $Global:RoleMembersFile
+Get-SettingsFromFile $Global:RoleMembersFile
 $Global:Roles += $Global:RoleOperator
