@@ -1,68 +1,29 @@
 <#
     .SYNOPSIS 
-        Alexk
-        xx.xx.xxxx
-        1
+        .AUTOR
+        .DATE
+        .VER
     .DESCRIPTION
     .PARAMETER
     .EXAMPLE
 #>
-Param (
-    [string]$ScriptRoot
-)
+$MyScriptRoot = "C:\DATA\ProjectServices\SetProjectPermissions\SCRIPTS"
+$InitScript = "C:\DATA\Projects\GlobalSettings\SCRIPTS\Init.ps1"
 
-$ImportResult = Import-Module AlexkUtils  -PassThru
-if ($null -eq $ImportResult) {
-    Write-Host "Module 'AlexkUtils' does not loaded!"
-    exit 1
-}
-else {
-    $ImportResult = $null
-}
-#requires -version 3
+. "$InitScript" -MyScriptRoot $MyScriptRoot
 
-#########################################################################
-function Get-WorkDir () {
-    if ($PSScriptRoot -eq "") {
-        if ($PWD -ne "") {
-            $MyScriptRoot = $PWD
-        }        
-        else {
-            Write-Host "Where i am? What is my work dir?"
-        }
-    }
-    else {
-        $MyScriptRoot = $PSScriptRoot
-    }
-    return $MyScriptRoot
-}
-Function Initialize-Script   () {
-    [string]$Global:MyScriptRoot = Get-WorkDir
-    [string]$Global:GlobalSettingsPath = "C:\DATA\Projects\GlobalSettings\SETTINGS\Settings.ps1"
-
-    Get-SettingsFromFile -SettingsFile $Global:GlobalSettingsPath
-    if ($GlobalSettingsSuccessfullyLoaded) {    
-        Get-SettingsFromFile -SettingsFile "$ProjectRoot\$($Global:SETTINGSFolder)\Settings.ps1"
-        if ($Global:LocalSettingsSuccessfullyLoaded) {
-            Initialize-Logging   "$ProjectRoot\$LOGSFolder\$ErrorsLogFileName" "Latest"
-            Write-Host "Logging initialized."            
-        }
-        Else {
-            Add-ToLog -Message "[Error] Error loading local settings!" -logFilePath "$(Split-Path -path $Global:MyScriptRoot -parent)\$LOGSFolder\$ErrorsLogFileName" -Display -Status "Error" -Format 'yyyy-MM-dd HH:mm:ss'
-            Exit 1 
-        }
-    }
-    Else { 
-        Add-ToLog -Message "[Error] Error loading global settings!" -logFilePath "$(Split-Path -path $Global:MyScriptRoot -parent)\LOGS\Errors.log" -Display -Status "Error" -Format 'yyyy-MM-dd HH:mm:ss'
-        Exit 1
-    }
-}
 # Error trap
 trap {
-    Get-ErrorReporting $_    
+    if ($Global:Logger) {
+        Get-ErrorReporting $_ 
+    }
+    Else {
+        Write-Host "There is error before logging initialized." -ForegroundColor Red
+    }   
     exit 1
 }
-#########################################################################
+################################# Script start here #################################
+
 Function Set-NTFSAccess ($Path, $Acl) {
     if (Test-Path $Path) {
         $Object = Get-Item -Path $Path              
@@ -95,7 +56,7 @@ Function Set-NTFSAccess ($Path, $Acl) {
                     Owner  = $Global:Owner
                     Mode   = $Acl.Mode
                 } 
-                $Global:Array += $PSO
+                $Global:ACLArray += $PSO
             }            
         }
     }
@@ -121,20 +82,20 @@ if ((Test-Path $ACLFile) -and (Test-Path $RolesFile) -and (Test-Path $OwnerFile)
     $ACL               = Import-Csv -path $ACLFile -Encoding utf8
     $Global:Owner      = (Import-Csv -path $OwnerFile -Encoding utf8)[0].Owner
 
-    [array] $Global:Array = @()
+    [array] $Global:ACLArray = @()
     foreach ($item in $ACL){
         Set-NTFSAccess $item.Path $item  
     }
 
-    $DistinctFolderPath = $Global:Array | Where-Object { $_.Folder -eq $true } | Select-Object Path -Unique
+    $DistinctFolderPath = $Global:ACLArray | Where-Object { $_.Folder -eq $true } | Select-Object Path -Unique
     Foreach ($Item in $DistinctFolderPath) {
         $ItemPath = $Item.path
-        Add-ToLog -Message "Proceed object [$ItemPath]." -logFilePath $Global:ScriptLogFilePath -display -status "Info"
+        Add-ToLog -Message "Processing object [$ItemPath]." -logFilePath $Global:ScriptLogFilePath -display -status "Info"
         $CurrentACL = Get-Acl $ItemPath
 
         [void]$CurrentACL.SetAccessRuleProtection($true, $false) # Delete inheritance  
 
-        $ACLs = $Global:Array | Where-Object { $_.path -eq $ItemPath }
+        $ACLs = $Global:ACLArray | Where-Object { $_.path -eq $ItemPath }
         [array]$Rights = @()
         Foreach ($Acl in $ACLs) {  
             if ($Acl.mode -eq $Global:Modes.replace) {  
@@ -193,13 +154,15 @@ if ((Test-Path $ACLFile) -and (Test-Path $RolesFile) -and (Test-Path $OwnerFile)
             }
         }     
         
-        if ($FileACL.owner -ne $Owner) {
-            $CurrentACL.SetOwner([System.Security.Principal.NTAccount]"$Owner")
-            $RulesIsEqual = $False
-        }
+        # if ($FileACL.owner -ne $Owner) {
+        #     $CurrentACL.SetOwner([System.Security.Principal.NTAccount]"$Owner")
+        #     Write-Host "Set owner [$Owner]."
+        #     $RulesIsEqual = $False
+        # }
         
         if (!$RulesIsEqual) {
             $Rights | Select-Object * | Format-Table -AutoSize
+            #(Get-Item $ItemPath).SetAccessControl($CurrentACL)    
             Set-Acl -Path $ItemPath -AclObject $CurrentACL
             Add-ToLog -Message "Permissions changed." -logFilePath $Global:ScriptLogFilePath -display -status "Info"
         }
@@ -208,7 +171,7 @@ if ((Test-Path $ACLFile) -and (Test-Path $RolesFile) -and (Test-Path $OwnerFile)
         }
     }
 
-    $DistinctFilePath = $Global:Array | Where-Object { $_.Folder -eq $false } | Select-Object Path -Unique
+    $DistinctFilePath = $Global:ACLArray | Where-Object { $_.Folder -eq $false } | Select-Object Path -Unique
     Foreach ($Item in $DistinctFilePath) {
         $ItemPath = $Item.path
         Add-ToLog -Message "Proceed object [$ItemPath]." -logFilePath $Global:ScriptLogFilePath -display -status "Info"
@@ -216,7 +179,7 @@ if ((Test-Path $ACLFile) -and (Test-Path $RolesFile) -and (Test-Path $OwnerFile)
 
         [void]$CurrentACL.SetAccessRuleProtection($true, $false) # Delete inheritance  
 
-        $ACLs = $Global:Array | Where-Object { $_.path -eq $ItemPath }
+        $ACLs = $Global:ACLArray | Where-Object { $_.path -eq $ItemPath }
         [array]$Rights = @()
         Foreach ($Acl in $ACLs) {  
             if ($Acl.mode -eq $Global:Modes.replace) {  
@@ -275,13 +238,15 @@ if ((Test-Path $ACLFile) -and (Test-Path $RolesFile) -and (Test-Path $OwnerFile)
             }
         }    
 
-        if ($FileACL.owner -ne $Owner){
-            $CurrentACL.SetOwner([System.Security.Principal.NTAccount]"$Owner")
-            $RulesIsEqual = $False
-        }
+        # if ($FileACL.owner -ne $Owner){
+        #     $CurrentACL.SetOwner([System.Security.Principal.NTAccount]"$Owner")
+        #     Write-Host "Set owner [$Owner]."
+        #     $RulesIsEqual = $False
+        # }
         
         if (!$RulesIsEqual) {
             $Rights | Select-Object * | Format-Table -AutoSize
+            #(Get-Item $ItemPath).SetAccessControl($CurrentACL)
             Set-Acl -Path $ItemPath -AclObject $CurrentACL
             Add-ToLog -Message "Permissions changed." -logFilePath $Global:ScriptLogFilePath -display -status "Info"
         }
@@ -294,3 +259,6 @@ if ((Test-Path $ACLFile) -and (Test-Path $RolesFile) -and (Test-Path $OwnerFile)
 Else{
     Add-ToLog -Message "There is no [$ACLFile] or [$RolesFile] for project [$ScriptRoot]." -logFilePath $Global:ScriptLogFilePath -display -status "Error"
 }
+
+################################# Script end here ###################################
+. "$GlobalSettings\$SCRIPTSFolder\Finish.ps1"

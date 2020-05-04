@@ -1,69 +1,28 @@
 <#
     .SYNOPSIS 
-        Alexk
-        xx.xx.xxxx
-        1
+        .AUTOR
+        .DATE
+        .VER
     .DESCRIPTION
     .PARAMETER
     .EXAMPLE
 #>
-Param (
-    [string] $ScriptRoot
-)
+$MyScriptRoot = "C:\DATA\ProjectServices\SetProjectPermissions\SCRIPTS"
+$InitScript = "C:\DATA\Projects\GlobalSettings\SCRIPTS\Init.ps1"
 
-$ImportResult = Import-Module AlexkUtils  -PassThru -force
-if ($null -eq $ImportResult) {
-    Modify-Host "Module 'AlexkUtils' does not loaded!"
-    exit 1
-}
-else {
-    $ImportResult = $null
-}
-#requires -version 3
+. "$InitScript" -MyScriptRoot $MyScriptRoot
 
-#########################################################################
-function Get-WorkDir () {
-    if ($PSScriptRoot -eq "") {
-        if ($PWD -ne "") {
-            $ScriptRoot = $PWD
-        }        
-        else {
-            Modify-Host "Where i am? What is my work dir?"
-        }
-    }
-    else {
-        $ScriptRoot = $PSScriptRoot
-    }
-    return $ScriptRoot
-}
-Function Initialize-Script   () {
-    [string]$Global:MyScriptRoot = Get-WorkDir
-    [string]$Global:GlobalSettingsPath = "C:\DATA\Projects\GlobalSettings\SETTINGS\Settings.ps1"
-
-    Get-SettingsFromFile -SettingsFile $Global:GlobalSettingsPath
-    if ($GlobalSettingsSuccessfullyLoaded) {    
-        Get-SettingsFromFile -SettingsFile "$ProjectRoot\$($Global:SETTINGSFolder)\Settings.ps1"
-        if ($Global:LocalSettingsSuccessfullyLoaded) {
-            Initialize-Logging   "$ProjectRoot\$LOGSFolder\$ErrorsLogFileName" "Latest"
-            Write-Host "Logging initialized."            
-        }
-        Else {
-            Add-ToLog -Message "[Error] Error loading local settings!" -logFilePath "$(Split-Path -path $Global:MyScriptRoot -parent)\$LOGSFolder\$ErrorsLogFileName" -Display -Status "Error" -Format 'yyyy-MM-dd HH:mm:ss'
-            Exit 1 
-        }
-    }
-    Else { 
-        Add-ToLog -Message "[Error] Error loading global settings!" -logFilePath "$(Split-Path -path $Global:MyScriptRoot -parent)\LOGS\Errors.log" -Display -Status "Error" -Format 'yyyy-MM-dd HH:mm:ss'
-        Exit 1
-    }
-}
 # Error trap
 trap {
-    Get-ErrorReporting $_    
+    if ($Global:Logger) {
+        Get-ErrorReporting $_ 
+    }
+    Else {
+        Write-Host "There is error before logging initialized." -ForegroundColor Red
+    }   
     exit 1
 }
-#########################################################################
-Initialize-Script
+################################# Script start here #################################
 
 if (!$ScriptRoot) {
     $ScriptRoot = $Global:PathToAnalyzedFolder
@@ -79,7 +38,7 @@ if (Test-Path $ScriptRoot){
 
         ############# RoleAdministrator ################
         $SPECIALFoldersCopy = $Global:SPECIALFolders
-        $Global:SPECIALFoldersCopy += ""
+        $SPECIALFoldersCopy += ""
 
         foreach ($Folder in $SPECIALFoldersCopy) {
             $ObjFolder = [PSCustomObject]@{
@@ -187,7 +146,7 @@ if (Test-Path $ScriptRoot){
             Owner = $Global:Owner
         }
 
-        $ExportObjects | Export-Csv "$ScriptRoot\$ACLFolder\$AccessFileName" -Encoding utf8 -Force   
+        $ExportObjects |Sort-Object path | Export-Csv "$ScriptRoot\$ACLFolder\$AccessFileName" -Encoding utf8 -Force   
         $Roles | Export-Csv "$ScriptRoot\$ACLFolder\$RolesFileName" -Encoding utf8 -Force    
         $Owner | Export-Csv "$ScriptRoot\$ACLFolder\$OwnerFileName" -Encoding utf8 -Force 
 
@@ -200,3 +159,6 @@ if (Test-Path $ScriptRoot){
 Else {
         Add-ToLog -Message "Path [$ScriptRoot] not found." -logFilePath $Global:ScriptLogFilePath -display -status "Warning"
 }    
+
+################################# Script end here ###################################
+. "$GlobalSettings\$SCRIPTSFolder\Finish.ps1"
