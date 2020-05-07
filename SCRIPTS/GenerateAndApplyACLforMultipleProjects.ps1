@@ -7,15 +7,16 @@
     .PARAMETER
     .EXAMPLE
 #>
-$MyScriptRoot = "C:\DATA\ProjectServices\SetProjectPermissions\SCRIPTS"
+Clear-Host
+$Global:ScriptName = $MyInvocation.MyCommand.Name
 $InitScript = "C:\DATA\Projects\GlobalSettings\SCRIPTS\Init.ps1"
-
-. "$InitScript" -MyScriptRoot $MyScriptRoot
+if (. "$InitScript" -MyScriptRoot (Split-Path $PSCommandPath -Parent) -force) { exit 1 }
 
 # Error trap
 trap {
     if ($Global:Logger) {
-        Get-ErrorReporting $_ 
+       Get-ErrorReporting $_
+        . "$GlobalSettings\$SCRIPTSFolder\Finish.ps1"  
     }
     Else {
         Write-Host "There is error before logging initialized." -ForegroundColor Red
@@ -23,7 +24,6 @@ trap {
     exit 1
 }
 ################################# Script start here #################################
-Clear-Host
 
 foreach ($Folder in $global:FoldersToApplyPath) {
     $Projects = Get-ChildItem -path $Folder -Directory  -ErrorAction SilentlyContinue
@@ -35,7 +35,7 @@ foreach ($Folder in $global:FoldersToApplyPath) {
             [string]$RolesFilePath = "$ProjectPath\$ACLFolder\$RolesFileName"
             [string]$OwnerFilePath = "$ProjectPath\$ACLFolder\$OwnerFileName"
             $ACLFilesExist = ((Test-Path $ACLFilePath) -and (Test-Path $RolesFilePath) -and (Test-Path $OwnerFilePath))
-            $ACLFilesExist
+            #$ACLFilesExist
             if (!$ACLFilesExist -or $Global:RegenerateACL) {
                 & $MyScriptRoot\GenerateACL.ps1 $ProjectPath
             }

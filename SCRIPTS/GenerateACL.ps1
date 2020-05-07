@@ -7,15 +7,18 @@
     .PARAMETER
     .EXAMPLE
 #>
-$MyScriptRoot = "C:\DATA\ProjectServices\SetProjectPermissions\SCRIPTS"
+Param (
+    [string] $ScriptRoot
+)
+$Global:ScriptName = $MyInvocation.MyCommand.Name
 $InitScript = "C:\DATA\Projects\GlobalSettings\SCRIPTS\Init.ps1"
-
-. "$InitScript" -MyScriptRoot $MyScriptRoot
+if (. "$InitScript" -MyScriptRoot (Split-Path $PSCommandPath -Parent)) { exit 1 }
 
 # Error trap
 trap {
     if ($Global:Logger) {
-        Get-ErrorReporting $_ 
+       Get-ErrorReporting $_
+        . "$GlobalSettings\$SCRIPTSFolder\Finish.ps1"  
     }
     Else {
         Write-Host "There is error before logging initialized." -ForegroundColor Red
@@ -30,8 +33,6 @@ if (!$ScriptRoot) {
 }
 if (Test-Path $ScriptRoot){
     If ($Global:RegenerateACL -or !(Test-Path "$ScriptRoot\$ACLFolder")) {
-        Add-ToLog -Message "Generate ACL to project [$ScriptRoot]" -logFilePath $Global:ScriptLogFilePath -display -status "Info"
-
         [array]  $Objects            = @()
         [array]  $ExportObjects      = @()
         [array]  $SPECIALFoldersCopy = @()
@@ -150,7 +151,6 @@ if (Test-Path $ScriptRoot){
         $Roles | Export-Csv "$ScriptRoot\$ACLFolder\$RolesFileName" -Encoding utf8 -Force    
         $Owner | Export-Csv "$ScriptRoot\$ACLFolder\$OwnerFileName" -Encoding utf8 -Force 
 
-        Add-ToLog -Message "ACL Generated!" -logFilePath $Global:ScriptLogFilePath -display -status "Info"
     }
     Else {
         Add-ToLog -Message "ACL Generation disabled." -logFilePath $Global:ScriptLogFilePath -display -status "Warning"

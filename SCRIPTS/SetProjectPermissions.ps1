@@ -7,15 +7,17 @@
     .PARAMETER
     .EXAMPLE
 #>
-$MyScriptRoot = "C:\DATA\ProjectServices\SetProjectPermissions\SCRIPTS"
+Param (
+    [string] $ScriptRoot
+)
+$Global:ScriptName = $MyInvocation.MyCommand.Name
 $InitScript = "C:\DATA\Projects\GlobalSettings\SCRIPTS\Init.ps1"
-
-. "$InitScript" -MyScriptRoot $MyScriptRoot
-
+if (. "$InitScript" -MyScriptRoot (Split-Path $PSCommandPath -Parent)) { exit 1 }
 # Error trap
 trap {
     if ($Global:Logger) {
-        Get-ErrorReporting $_ 
+       Get-ErrorReporting $_
+        . "$GlobalSettings\$SCRIPTSFolder\Finish.ps1"  
     }
     Else {
         Write-Host "There is error before logging initialized." -ForegroundColor Red
@@ -62,8 +64,6 @@ Function Set-NTFSAccess ($Path, $Acl) {
     }
 }
 
-Initialize-Script
-
 if (!$ScriptRoot) {
     $ScriptRoot = $Global:PathToAnalyzedFolder
     Clear-Host
@@ -75,7 +75,7 @@ if (!$ScriptRoot) {
 
 if ((Test-Path $ACLFile) -and (Test-Path $RolesFile) -and (Test-Path $OwnerFile)) {
     
-    Add-ToLog -Message "Set NTFS permissions to project [$ScriptRoot]." -logFilePath $Global:ScriptLogFilePath -display -status "Info"
+    Add-ToLog -Message "Set NTFS permissions to project [$ScriptRoot]." -logFilePath $Global:ScriptLogFilePath -display -status "Info" -level ($ParentLevel + 1)
     [array] $Global:LocalRoles  = @()
 
     $Global:LocalRoles = Import-Csv -path $RolesFile -Encoding utf8
@@ -90,7 +90,7 @@ if ((Test-Path $ACLFile) -and (Test-Path $RolesFile) -and (Test-Path $OwnerFile)
     $DistinctFolderPath = $Global:ACLArray | Where-Object { $_.Folder -eq $true } | Select-Object Path -Unique
     Foreach ($Item in $DistinctFolderPath) {
         $ItemPath = $Item.path
-        Add-ToLog -Message "Processing object [$ItemPath]." -logFilePath $Global:ScriptLogFilePath -display -status "Info"
+        Add-ToLog -Message "Processing object [$ItemPath]." -logFilePath $Global:ScriptLogFilePath -display -status "Info" -level ($ParentLevel + 1)
         $CurrentACL = Get-Acl $ItemPath
 
         [void]$CurrentACL.SetAccessRuleProtection($true, $false) # Delete inheritance  
@@ -164,17 +164,17 @@ if ((Test-Path $ACLFile) -and (Test-Path $RolesFile) -and (Test-Path $OwnerFile)
             $Rights | Select-Object * | Format-Table -AutoSize
             #(Get-Item $ItemPath).SetAccessControl($CurrentACL)    
             Set-Acl -Path $ItemPath -AclObject $CurrentACL
-            Add-ToLog -Message "Permissions changed." -logFilePath $Global:ScriptLogFilePath -display -status "Info"
+            Add-ToLog -Message "Permissions changed." -logFilePath $Global:ScriptLogFilePath -display -status "Info" -level ($ParentLevel + 1)
         }
         Else {
-            Add-ToLog -Message "Permissions are equal to model." -logFilePath $Global:ScriptLogFilePath -display -status "Info"
+            Add-ToLog -Message "Permissions are equal to model." -logFilePath $Global:ScriptLogFilePath -display -status "Info" -level ($ParentLevel + 1)
         }
     }
 
     $DistinctFilePath = $Global:ACLArray | Where-Object { $_.Folder -eq $false } | Select-Object Path -Unique
     Foreach ($Item in $DistinctFilePath) {
         $ItemPath = $Item.path
-        Add-ToLog -Message "Proceed object [$ItemPath]." -logFilePath $Global:ScriptLogFilePath -display -status "Info"
+        Add-ToLog -Message "Processing object [$ItemPath]." -logFilePath $Global:ScriptLogFilePath -display -status "Info" -level ($ParentLevel + 1)
         $CurrentACL = Get-Acl $ItemPath
 
         [void]$CurrentACL.SetAccessRuleProtection($true, $false) # Delete inheritance  
@@ -248,16 +248,15 @@ if ((Test-Path $ACLFile) -and (Test-Path $RolesFile) -and (Test-Path $OwnerFile)
             $Rights | Select-Object * | Format-Table -AutoSize
             #(Get-Item $ItemPath).SetAccessControl($CurrentACL)
             Set-Acl -Path $ItemPath -AclObject $CurrentACL
-            Add-ToLog -Message "Permissions changed." -logFilePath $Global:ScriptLogFilePath -display -status "Info"
+            Add-ToLog -Message "Permissions changed." -logFilePath $Global:ScriptLogFilePath -display -status "Info" -level ($ParentLevel + 1)
         }
         Else{
-            Add-ToLog -Message "Permissions are equal to model." -logFilePath $Global:ScriptLogFilePath -display -status "Info"
+            Add-ToLog -Message "Permissions are equal to model." -logFilePath $Global:ScriptLogFilePath -display -status "Info" -level ($ParentLevel + 1)
         }
     }
-    Add-ToLog -Message "Permissions set." -logFilePath $Global:ScriptLogFilePath -display -status "Info"
 }
 Else{
-    Add-ToLog -Message "There is no [$ACLFile] or [$RolesFile] for project [$ScriptRoot]." -logFilePath $Global:ScriptLogFilePath -display -status "Error"
+    Add-ToLog -Message "There is no [$ACLFile] or [$RolesFile] for project [$ScriptRoot]." -logFilePath $Global:ScriptLogFilePath -display -status "Error" -level ($ParentLevel + 1)
 }
 
 ################################# Script end here ###################################
