@@ -15,11 +15,6 @@
     [array] $global:FoldersToIgnoreName   = @(".vscode", "TemplateProject")                             # Ignored folder names.
     [bool]  $Global:RegenerateACL         = $True                                                       # Regenerate ACL files?
 
-$FileRoles = Get-ChildItem -path "$ProjectRoot\$DATAFolder\ROLES" -File -Filter "role*.ps1"  
-foreach ($Role in $FileRoles){
-    Get-SettingsFromFile  $Role.fullName
-}
-
 $Global:Rights = [PSCustomObject]@{
     FC      = "FullControl"
     Modify  = "Modify"
@@ -33,6 +28,12 @@ $Global:Modes = [PSCustomObject]@{
     Replace = "Replace"
     Append  = "Append"
 }
+
+$FileRoles = Get-ChildItem -path "$ProjectRoot\$DATAFolder\ROLES" -File -Filter "role*.ps1"  
+foreach ($Role in $FileRoles) {
+    Get-SettingsFromFile  $Role.fullName
+}
+
 
 [bool] $Global:LocalSettingsSuccessfullyLoaded = $true
 

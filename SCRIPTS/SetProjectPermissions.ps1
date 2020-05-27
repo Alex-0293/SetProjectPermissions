@@ -8,19 +8,27 @@
     .EXAMPLE
 #>
 Param (
-    [string] $ScriptRoot
+    [Parameter( Mandatory = $false, Position = 0, HelpMessage = "Initialize global settings." )]
+    [bool] $InitGlobal = $true,
+    [Parameter( Mandatory = $false, Position = 1, HelpMessage = "Initialize local settings." )]
+    [bool] $InitLocal = $true,
+    [Parameter( Mandatory = $false, Position = 2, HelpMessage = "Set script root." )]
+    [string] $PathToFolder      
 )
-$Global:ScriptName = $MyInvocation.MyCommand.Name
+
+$Global:ScriptInvocation = $MyInvocation
 $InitScript = "C:\DATA\Projects\GlobalSettings\SCRIPTS\Init.ps1"
-if (. "$InitScript" -MyScriptRoot (Split-Path $PSCommandPath -Parent)) { exit 1 }
+. "$InitScript" -MyScriptRoot (Split-Path $PSCommandPath -Parent) -InitGlobal $InitGlobal -InitLocal $InitLocal
+if ($LastExitCode) { exit 1 }
 # Error trap
 trap {
-    if ($Global:Logger) {
+    if (get-module -FullyQualifiedName AlexkUtils) {
        Get-ErrorReporting $_
+
         . "$GlobalSettings\$SCRIPTSFolder\Finish.ps1"  
     }
     Else {
-        Write-Host "There is error before logging initialized." -ForegroundColor Red
+        Write-Host "[$($MyInvocation.MyCommand.path)] There is error before logging initialized. Error: $_" -ForegroundColor Red
     }   
     exit 1
 }
@@ -31,6 +39,7 @@ Function Set-NTFSAccess ($Path, $Acl) {
         $Object = Get-Item -Path $Path              
         foreach ($Role in $Global:LocalRoles) {
             if ($Role.name -eq $Acl.role){   
+                $Permissions = @()
                 if ($Acl.Right -ne $Global:Rights.deny) {
                     $RuleType            = "Allow"
                     $Rights              = $Acl.Right
@@ -49,33 +58,41 @@ Function Set-NTFSAccess ($Path, $Acl) {
                 
                 $user                = $Role.Member                    
                 $PropagationSettings = "None"
-                $Permissions         = $user, $Rights, $InheritSettings, $PropagationSettings, $RuleType
-                $AccessRule          = New-Object System.Security.AccessControl.FileSystemAccessRule -ArgumentList $Permissions                    
-                $PSO = [PSCustomObject]@{
-                    Path   = $Path
-                    Folder = $Object.PSIsContainer
-                    ACL    = $AccessRule
-                    Owner  = $Global:Owner
-                    Mode   = $Acl.Mode
+                [array]$Permissions         = $user, $Rights, $InheritSettings, $PropagationSettings, $RuleType
+                if ($Permissions) {                    
+                    # write-host $Permissions
+                    # foreach ($item in $Permissions){
+                    #     Write-Host $item  
+                    # }
+                    $AccessRule          = New-Object System.Security.AccessControl.FileSystemAccessRule -ArgumentList $Permissions                    
+                    $PSO = [PSCustomObject]@{
+                        Path   = $Path
+                        Folder = $Object.PSIsContainer
+                        ACL    = $AccessRule
+                        Owner  = $Global:Owner
+                        Mode   = $Acl.Mode
+                    } 
+                    $Global:ACLArray += $PSO
                 } 
-                $Global:ACLArray += $PSO
+                Else {
+                    Add-ToLog -Message "Empty permissions [$Permissions]!" -logFilePath $Global:ScriptLogFilePath -Display -Status "Error" 
+                }
             }            
         }
     }
 }
 
-if (!$ScriptRoot) {
-    $ScriptRoot = $Global:PathToAnalyzedFolder
-    Clear-Host
+if (!$PathToFolder) {
+    $PathToFolder = $Global:PathToAnalyzedFolder
 }
 
-[string]$ACLFile   = "$ScriptRoot\$ACLFolder\Access.csv"
-[string]$RolesFile = "$ScriptRoot\$ACLFolder\Roles.csv"
-[string]$OwnerFile = "$ScriptRoot\$ACLFolder\Owner.csv"
+[string]$ACLFile   = "$PathToFolder\$ACLFolder\Access.csv"
+[string]$RolesFile = "$PathToFolder\$ACLFolder\Roles.csv"
+[string]$OwnerFile = "$PathToFolder\$ACLFolder\Owner.csv"
 
 if ((Test-Path $ACLFile) -and (Test-Path $RolesFile) -and (Test-Path $OwnerFile)) {
     
-    Add-ToLog -Message "Set NTFS permissions to project [$ScriptRoot]." -logFilePath $Global:ScriptLogFilePath -display -status "Info" -level ($ParentLevel + 1)
+    Add-ToLog -Message "Setting NTFS permissions to project [$PathToFolder]." -logFilePath $Global:ScriptLogFilePath -display -status "Info" -level ($ParentLevel + 1)
     [array] $Global:LocalRoles  = @()
 
     $Global:LocalRoles = Import-Csv -path $RolesFile -Encoding utf8
@@ -161,7 +178,7 @@ if ((Test-Path $ACLFile) -and (Test-Path $RolesFile) -and (Test-Path $OwnerFile)
         # }
         
         if (!$RulesIsEqual) {
-            $Rights | Select-Object * | Format-Table -AutoSize
+            #$Rights | Select-Object * | Format-Table -AutoSize
             #(Get-Item $ItemPath).SetAccessControl($CurrentACL)    
             Set-Acl -Path $ItemPath -AclObject $CurrentACL
             Add-ToLog -Message "Permissions changed." -logFilePath $Global:ScriptLogFilePath -display -status "Info" -level ($ParentLevel + 1)
@@ -245,7 +262,7 @@ if ((Test-Path $ACLFile) -and (Test-Path $RolesFile) -and (Test-Path $OwnerFile)
         # }
         
         if (!$RulesIsEqual) {
-            $Rights | Select-Object * | Format-Table -AutoSize
+            #$Rights | Select-Object * | Format-Table -AutoSize
             #(Get-Item $ItemPath).SetAccessControl($CurrentACL)
             Set-Acl -Path $ItemPath -AclObject $CurrentACL
             Add-ToLog -Message "Permissions changed." -logFilePath $Global:ScriptLogFilePath -display -status "Info" -level ($ParentLevel + 1)
@@ -256,7 +273,7 @@ if ((Test-Path $ACLFile) -and (Test-Path $RolesFile) -and (Test-Path $OwnerFile)
     }
 }
 Else{
-    Add-ToLog -Message "There is no [$ACLFile] or [$RolesFile] for project [$ScriptRoot]." -logFilePath $Global:ScriptLogFilePath -display -status "Error" -level ($ParentLevel + 1)
+    Add-ToLog -Message "There is no [$ACLFile] or [$RolesFile] for project [$PathToFolder]." -logFilePath $Global:ScriptLogFilePath -display -status "Error" -level ($ParentLevel + 1)
 }
 
 ################################# Script end here ###################################

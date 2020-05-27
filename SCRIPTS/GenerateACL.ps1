@@ -7,32 +7,40 @@
     .PARAMETER
     .EXAMPLE
 #>
+
 Param (
-    [string] $ScriptRoot
+    [Parameter( Mandatory = $false, Position = 0, HelpMessage = "Initialize global settings." )]
+    [bool] $InitGlobal = $true,
+    [Parameter( Mandatory = $false, Position = 1, HelpMessage = "Initialize local settings." )]
+    [bool] $InitLocal  = $true,
+    [Parameter( Mandatory = $false, Position = 2, HelpMessage = "Set script root." )]
+    [string] $PathToFolder   
 )
-$Global:ScriptName = $MyInvocation.MyCommand.Name
+
+$Global:ScriptInvocation = $MyInvocation
 $InitScript = "C:\DATA\Projects\GlobalSettings\SCRIPTS\Init.ps1"
-if (. "$InitScript" -MyScriptRoot (Split-Path $PSCommandPath -Parent)) { exit 1 }
+if (. "$InitScript" -MyScriptRoot (Split-Path $PSCommandPath -Parent) -InitGlobal $InitGlobal -InitLocal $InitLocal ) { exit 1 }
 
 # Error trap
 trap {
-    if ($Global:Logger) {
+    if (get-module -FullyQualifiedName AlexkUtils) {
        Get-ErrorReporting $_
+
         . "$GlobalSettings\$SCRIPTSFolder\Finish.ps1"  
     }
     Else {
-        Write-Host "There is error before logging initialized." -ForegroundColor Red
+        Write-Host "[$($MyInvocation.MyCommand.path)] There is error before logging initialized. Error: $_" -ForegroundColor Red
     }   
     exit 1
 }
 ################################# Script start here #################################
 
-if (!$ScriptRoot) {
-    $ScriptRoot = $Global:PathToAnalyzedFolder
-    Clear-Host
+if (!$PathToFolder) {
+    $PathToFolder = $Global:PathToAnalyzedFolder
 }
-if (Test-Path $ScriptRoot){
-    If ($Global:RegenerateACL -or !(Test-Path "$ScriptRoot\$ACLFolder")) {
+Add-ToLog -Message "Generating ACL for folder [$PathToFolder]." -logFilePath $Global:ScriptLogFilePath -display -status "info"
+if (Test-Path $PathToFolder){
+    If ($Global:RegenerateACL -or !(Test-Path "$PathToFolder\$ACLFolder")) {
         [array]  $Objects            = @()
         [array]  $ExportObjects      = @()
         [array]  $SPECIALFoldersCopy = @()
@@ -44,7 +52,7 @@ if (Test-Path $ScriptRoot){
         foreach ($Folder in $SPECIALFoldersCopy) {
             $ObjFolder = [PSCustomObject]@{
                 Role  = $Global:RoleAdministrator[0].Name
-                Path  = "$ScriptRoot\$Folder"
+                Path  = "$PathToFolder\$Folder"
                 Right = @($Global:Rights.FC) -join ", "
                 Mode  = $Global:Modes.Replace
             }
@@ -54,7 +62,7 @@ if (Test-Path $ScriptRoot){
         ############# RoleOperator ################
         $ObjFolder = [PSCustomObject]@{
             Role  = $Global:RoleOperator[0].Name
-            Path  = "$ScriptRoot\"
+            Path  = "$PathToFolder\"
             Right = @($Global:Rights.Modify)  -join ", "
             Mode  = $Global:Modes.Replace
         }
@@ -62,7 +70,7 @@ if (Test-Path $ScriptRoot){
 
         $ObjFolder = [PSCustomObject]@{
             Role  = $Global:RoleOperator[0].Name
-            Path  = "$ScriptRoot\$DATAFolder"
+            Path  = "$PathToFolder\$DATAFolder"
             Right = @($Global:Rights.Modify) -join ", "
             Mode  = $Global:Modes.Replace
         }
@@ -70,7 +78,7 @@ if (Test-Path $ScriptRoot){
 
         $ObjFolder = [PSCustomObject]@{
             Role  = $Global:RoleOperator[0].Name
-            Path  = "$ScriptRoot\$ACLFolder"
+            Path  = "$PathToFolder\$ACLFolder"
             Right = @($Global:Rights.Deny) -join ", "
             Mode  = $Global:Modes.Replace
         }
@@ -78,7 +86,7 @@ if (Test-Path $ScriptRoot){
         
         $ObjFolder = [PSCustomObject]@{
             Role  = $Global:RoleOperator[0].Name
-            Path  = "$ScriptRoot\$LOGSFolder"
+            Path  = "$PathToFolder\$LOGSFolder"
             Right = @($Global:Rights.Read, $Global:Rights.Write) -join ", "
             Mode  = $Global:Modes.Replace
         }
@@ -86,7 +94,7 @@ if (Test-Path $ScriptRoot){
 
         $ObjFolder = [PSCustomObject]@{
             Role  = $Global:RoleOperator[0].Name
-            Path  = "$ScriptRoot\$SCRIPTSFolder"
+            Path  = "$PathToFolder\$SCRIPTSFolder"
             Right = @($Global:Rights.Read, $Global:Rights.Execute) -join ", "
             Mode  = $Global:Modes.Replace
         }
@@ -94,7 +102,7 @@ if (Test-Path $ScriptRoot){
         
         $ObjFolder = [PSCustomObject]@{
             Role  = $Global:RoleOperator[0].Name
-            Path  = "$ScriptRoot\$SETTINGSFolder"
+            Path  = "$PathToFolder\$SETTINGSFolder"
             Right = @($Global:Rights.Read, $Global:Rights.Execute) -join ", "
             Mode  = $Global:Modes.Replace
         }
@@ -102,16 +110,16 @@ if (Test-Path $ScriptRoot){
         
         $ObjFolder = [PSCustomObject]@{
             Role  = $Global:RoleOperator[0].Name
-            Path  = "$ScriptRoot\$VALUESFolder"
+            Path  = "$PathToFolder\$VALUESFolder"
             Right = @($Global:Rights.Read) -join ", "
             Mode  = $Global:Modes.Replace
         }
         $Objects += $ObjFolder 
 
-        if (Test-Path "$ScriptRoot\$ACLFolder") {
-            Remove-Item -path "$ScriptRoot\$ACLFolder" -force -recurse | Out-Null
+        if (Test-Path "$PathToFolder\$ACLFolder") {
+            Remove-Item -path "$PathToFolder\$ACLFolder" -force -recurse | Out-Null
         }
-        New-Item -path "$ScriptRoot\$ACLFolder" -ItemType Directory | Out-Null
+        New-Item -path "$PathToFolder\$ACLFolder" -ItemType Directory | Out-Null
         
         Foreach ($item in $Objects){
             If(test-path $Item.path){
@@ -119,7 +127,7 @@ if (Test-Path $ScriptRoot){
             }
         }
 
-        $Objects = Get-ChildItem -path $ScriptRoot -ErrorAction SilentlyContinue
+        $Objects = Get-ChildItem -path $PathToFolder -ErrorAction SilentlyContinue
         ForEach($Object in $Objects){
             if (!($ExportObjects.path -contains $Object.FullName)) {
                 $NewObject = [PSCustomObject]@{
@@ -140,16 +148,16 @@ if (Test-Path $ScriptRoot){
             }
         }
     
-        $ExportObjects | Sort-Object path | Format-Table -AutoSize
+        #$ExportObjects | Sort-Object path | Format-Table -AutoSize
         #$Roles         | Format-Table -AutoSize   
         
         $Owner = [PSCustomObject]@{
             Owner = $Global:Owner
         }
 
-        $ExportObjects |Sort-Object path | Export-Csv "$ScriptRoot\$ACLFolder\$AccessFileName" -Encoding utf8 -Force   
-        $Roles | Export-Csv "$ScriptRoot\$ACLFolder\$RolesFileName" -Encoding utf8 -Force    
-        $Owner | Export-Csv "$ScriptRoot\$ACLFolder\$OwnerFileName" -Encoding utf8 -Force 
+        $ExportObjects |Sort-Object path | Export-Csv "$PathToFolder\$ACLFolder\$AccessFileName" -Encoding utf8 -Force   
+        $Roles | Export-Csv "$PathToFolder\$ACLFolder\$RolesFileName" -Encoding utf8 -Force    
+        $Owner | Export-Csv "$PathToFolder\$ACLFolder\$OwnerFileName" -Encoding utf8 -Force 
 
     }
     Else {
@@ -157,7 +165,7 @@ if (Test-Path $ScriptRoot){
     }
 }
 Else {
-        Add-ToLog -Message "Path [$ScriptRoot] not found." -logFilePath $Global:ScriptLogFilePath -display -status "Warning"
+        Add-ToLog -Message "Path [$PathToFolder] not found." -logFilePath $Global:ScriptLogFilePath -display -status "Warning"
 }    
 
 ################################# Script end here ###################################
