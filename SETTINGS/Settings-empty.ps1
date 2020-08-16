@@ -1,10 +1,12 @@
 # Rename this file to Settings.ps1
+######################### value replacement ########################
 
-    [array]  $global:FoldersToApplyPath   = @()         # Path to run on.
     [string] $Global:PathToAnalyzedFolder = ""          # Selected project path.
     $Global:Owner                         = ""          # Owner account.
 
 ######################### no replacement ######################## 
+    [array]  $global:FoldersToApplyPath = $Global:ProjectServicesFolderPath, `
+                                            $Global:ProjectsFolderPath             # Path to run on.
     [string]$Global:SetPermissionErrors = "$ProjectRoot\$LOGSFolder\$($ScriptBaseFileName)Errors.log" # This script error file path.
     [string]$Global:RoleMembersFile     = "$ProjectRoot\$DATAFolder\ROLES\Members.ps1"                # Role members file path.
     [string]$Global:RolesFileName       = "Roles.csv"                # Role members file path.

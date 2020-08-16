@@ -25,7 +25,7 @@ trap {
     if (get-module -FullyQualifiedName AlexkUtils) {
        Get-ErrorReporting $_
 
-        . "$GlobalSettings\$SCRIPTSFolder\Finish.ps1"  
+        . "$GlobalSettingsPath\$SCRIPTSFolder\Finish.ps1"  
     }
     Else {
         Write-Host "[$($MyInvocation.MyCommand.path)] There is error before logging initialized. Error: $_" -ForegroundColor Red
@@ -118,7 +118,7 @@ if (Test-Path $PathToFolder){
         if (Test-Path "$PathToFolder\$ACLFolder") {
             Remove-Item -path "$PathToFolder\$ACLFolder" -force -recurse | Out-Null
         }
-        New-Item -path "$PathToFolder\$ACLFolder" -ItemType Directory | Out-Null
+        New-Item -path "$PathToFolder\$ACLFolder" -ItemType Directory -Force | Out-Null
         
         Foreach ($item in $Objects){
             If(test-path $Item.path){
@@ -168,4 +168,4 @@ Else {
 }    
 
 ################################# Script end here ###################################
-. "$GlobalSettings\$SCRIPTSFolder\Finish.ps1"
+. "$GlobalSettingsPath\$SCRIPTSFolder\Finish.ps1"
