@@ -1,14 +1,12 @@
 # Rename this file to Settings.ps1
-######################### value replacement ########################
 
+    [array]  $global:FoldersToApplyPath   = @()         # Path to run on.
     [string] $Global:PathToAnalyzedFolder = ""          # Selected project path.
     $Global:Owner                         = ""          # Owner account.
 
 ######################### no replacement ######################## 
-    [array]  $global:FoldersToApplyPath = $Global:ProjectServicesFolderPath, `
-                                            $Global:ProjectsFolderPath             # Path to run on.
-    [string]$Global:SetPermissionErrors = "$ProjectRoot\$LOGSFolder\$($ScriptBaseFileName)Errors.log" # This script error file path.
-    [string]$Global:RoleMembersFile     = "$ProjectRoot\$DATAFolder\ROLES\Members.ps1"                # Role members file path.
+    [string]$Global:SetPermissionErrors = "$ProjectRoot\$($Global:gsLOGSFolder)\$($($Global:gsScriptBaseFileName))Errors.log" # This script error file path.
+    [string]$Global:RoleMembersFile     = "$ProjectRoot\$($Global:gsDATAFolder)\ROLES\Members.ps1"                # Role members file path.
     [string]$Global:RolesFileName       = "Roles.csv"                # Role members file path.
     [string]$Global:AccessFileName      = "Access.csv"                # Role members file path.
     [string]$Global:OwnerFileName       = "Owner.csv"                # Role members file path.
@@ -31,7 +29,7 @@ $Global:Modes = [PSCustomObject]@{
     Append  = "Append"
 }
 
-$FileRoles = Get-ChildItem -path "$ProjectRoot\$DATAFolder\ROLES" -File -Filter "role*.ps1"  
+$FileRoles = Get-ChildItem -path "$ProjectRoot\$($Global:gsDATAFolder)\ROLES" -File -Filter "role*.ps1"  
 foreach ($Role in $FileRoles) {
     Get-SettingsFromFile  $Role.fullName
 }

@@ -1,10 +1,10 @@
 <#
     .SYNOPSIS 
         .AUTOR
-        .DATE
-        .VER
+        DATE
+        VER
     .DESCRIPTION
-    .PARAMETER
+    
     .EXAMPLE
 #>
 
@@ -25,7 +25,7 @@ trap {
     if (get-module -FullyQualifiedName AlexkUtils) {
        Get-ErrorReporting $_
 
-        . "$GlobalSettingsPath\$SCRIPTSFolder\Finish.ps1"  
+        . "$($Global:gsGlobalSettingsPath)\$($Global:gsSCRIPTSFolder)\Finish.ps1"  
     }
     Else {
         Write-Host "[$($MyInvocation.MyCommand.path)] There is error before logging initialized. Error: $_" -ForegroundColor Red
@@ -37,7 +37,7 @@ trap {
 if (!$PathToFolder) {
     $PathToFolder = $Global:PathToAnalyzedFolder
 }
-Add-ToLog -Message "Generating ACL for folder [$PathToFolder]." -logFilePath $Global:ScriptLogFilePath -display -status "info"
+Add-ToLog -Message "Generating ACL for folder [$PathToFolder]." -logFilePath $Global:gsScriptLogFilePath -display -status "info"
 if (Test-Path $PathToFolder){
     If ($Global:RegenerateACL -or !(Test-Path "$PathToFolder\$ACLFolder")) {
         [array]  $Objects            = @()
@@ -45,7 +45,7 @@ if (Test-Path $PathToFolder){
         [array]  $SPECIALFoldersCopy = @()
 
         ############# RoleAdministrator ################
-        $SPECIALFoldersCopy = $Global:SPECIALFolders
+        $SPECIALFoldersCopy = $Global:gsSPECIALFolders
         $SPECIALFoldersCopy += ""
 
         foreach ($Folder in $SPECIALFoldersCopy) {
@@ -154,18 +154,18 @@ if (Test-Path $PathToFolder){
             Owner = $Global:Owner
         }
 
-        $ExportObjects |Sort-Object path | Export-Csv "$PathToFolder\$ACLFolder\$AccessFileName" -Encoding utf8 -Force   
-        $Roles | Export-Csv "$PathToFolder\$ACLFolder\$RolesFileName" -Encoding utf8 -Force    
-        $Owner | Export-Csv "$PathToFolder\$ACLFolder\$OwnerFileName" -Encoding utf8 -Force 
+        $ExportObjects |Sort-Object path | Export-Csv "$PathToFolder\$($Global:gsACLFolder)\$AccessFileName" -Encoding utf8 -Force   
+        $Roles | Export-Csv "$PathToFolder\$($Global:gsACLFolder)\$RolesFileName" -Encoding utf8 -Force    
+        $Owner | Export-Csv "$PathToFolder\$($Global:gsACLFolder)\$OwnerFileName" -Encoding utf8 -Force 
 
     }
     Else {
-        Add-ToLog -Message "ACL Generation disabled." -logFilePath $Global:ScriptLogFilePath -display -status "Warning"
+        Add-ToLog -Message "ACL Generation disabled." -logFilePath $Global:gsScriptLogFilePath -display -status "Warning"
     }
 }
 Else {
-        Add-ToLog -Message "Path [$PathToFolder] not found." -logFilePath $Global:ScriptLogFilePath -display -status "Warning"
+        Add-ToLog -Message "Path [$PathToFolder] not found." -logFilePath $Global:gsScriptLogFilePath -display -status "Warning"
 }    
 
 ################################# Script end here ###################################
-. "$GlobalSettingsPath\$SCRIPTSFolder\Finish.ps1"
+. "$($Global:gsGlobalSettingsPath)\$($Global:gsSCRIPTSFolder)\Finish.ps1"

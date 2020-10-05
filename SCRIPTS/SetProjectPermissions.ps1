@@ -1,10 +1,10 @@
 <#
     .SYNOPSIS 
         .AUTOR
-        .DATE
-        .VER
+        DATE
+        VER
     .DESCRIPTION
-    .PARAMETER
+    
     .EXAMPLE
 #>
 Param (
@@ -24,7 +24,7 @@ trap {
     if (get-module -FullyQualifiedName AlexkUtils) {
        Get-ErrorReporting $_
 
-        . "$GlobalSettingsPath\$SCRIPTSFolder\Finish.ps1"  
+        . "$($Global:gsGlobalSettingsPath)\$($Global:gsSCRIPTSFolder)\Finish.ps1"  
     }
     Else {
         Write-Host "[$($MyInvocation.MyCommand.path)] There is error before logging initialized. Error: $_" -ForegroundColor Red
@@ -74,7 +74,7 @@ Function Set-NTFSAccess ($Path, $Acl) {
                     $Global:ACLArray += $PSO
                 } 
                 Else {
-                    Add-ToLog -Message "Empty permissions [$Permissions]!" -logFilePath $Global:ScriptLogFilePath -Display -Status "Error" 
+                    Add-ToLog -Message "Empty permissions [$Permissions]!" -logFilePath $Global:gsScriptLogFilePath -Display -Status "Error" 
                 }
             }            
         }
@@ -85,13 +85,13 @@ if (!$PathToFolder) {
     $PathToFolder = $Global:PathToAnalyzedFolder
 }
 
-[string]$ACLFile   = "$PathToFolder\$ACLFolder\Access.csv"
-[string]$RolesFile = "$PathToFolder\$ACLFolder\Roles.csv"
-[string]$OwnerFile = "$PathToFolder\$ACLFolder\Owner.csv"
+[string]$ACLFile   = "$PathToFolder\$($Global:gsACLFolder)\Access.csv"
+[string]$RolesFile = "$PathToFolder\$($Global:gsACLFolder)\Roles.csv"
+[string]$OwnerFile = "$PathToFolder\$($Global:gsACLFolder)\Owner.csv"
 
 if ((Test-Path $ACLFile) -and (Test-Path $RolesFile) -and (Test-Path $OwnerFile)) {
     
-    Add-ToLog -Message "Setting NTFS permissions to project [$PathToFolder]." -logFilePath $Global:ScriptLogFilePath -display -status "Info" -level ($ParentLevel + 1)
+    Add-ToLog -Message "Setting NTFS permissions to project [$PathToFolder]." -logFilePath $Global:gsScriptLogFilePath -display -status "Info" -level ($Global:gsParentLevel + 1)
     [array] $Global:LocalRoles  = @()
 
     $Global:LocalRoles = Import-Csv -path $RolesFile -Encoding utf8
@@ -106,7 +106,7 @@ if ((Test-Path $ACLFile) -and (Test-Path $RolesFile) -and (Test-Path $OwnerFile)
     $DistinctFolderPath = $Global:ACLArray | Where-Object { $_.Folder -eq $true } | Select-Object Path -Unique
     Foreach ($Item in $DistinctFolderPath) {
         $ItemPath = $Item.path
-        Add-ToLog -Message "Processing object [$ItemPath]." -logFilePath $Global:ScriptLogFilePath -display -status "Info" -level ($ParentLevel + 1)
+        Add-ToLog -Message "Processing object [$ItemPath]." -logFilePath $Global:gsScriptLogFilePath -display -status "Info" -level ($Global:gsParentLevel + 1)
         $CurrentACL = Get-Acl $ItemPath
 
         [void]$CurrentACL.SetAccessRuleProtection($true, $false) # Delete inheritance  
@@ -180,17 +180,17 @@ if ((Test-Path $ACLFile) -and (Test-Path $RolesFile) -and (Test-Path $OwnerFile)
             #$Rights | Select-Object * | Format-Table -AutoSize
             #(Get-Item $ItemPath).SetAccessControl($CurrentACL)    
             Set-Acl -Path $ItemPath -AclObject $CurrentACL
-            Add-ToLog -Message "Permissions changed." -logFilePath $Global:ScriptLogFilePath -display -status "Info" -level ($ParentLevel + 1)
+            Add-ToLog -Message "Permissions changed." -logFilePath $Global:gsScriptLogFilePath -display -status "Info" -level ($Global:gsParentLevel + 1)
         }
         Else {
-            Add-ToLog -Message "Permissions are equal to model." -logFilePath $Global:ScriptLogFilePath -display -status "Info" -level ($ParentLevel + 1)
+            Add-ToLog -Message "Permissions are equal to model." -logFilePath $Global:gsScriptLogFilePath -display -status "Info" -level ($Global:gsParentLevel + 1)
         }
     }
 
     $DistinctFilePath = $Global:ACLArray | Where-Object { $_.Folder -eq $false } | Select-Object Path -Unique
     Foreach ($Item in $DistinctFilePath) {
         $ItemPath = $Item.path
-        Add-ToLog -Message "Processing object [$ItemPath]." -logFilePath $Global:ScriptLogFilePath -display -status "Info" -level ($ParentLevel + 1)
+        Add-ToLog -Message "Processing object [$ItemPath]." -logFilePath $Global:gsScriptLogFilePath -display -status "Info" -level ($Global:gsParentLevel + 1)
         $CurrentACL = Get-Acl $ItemPath
 
         [void]$CurrentACL.SetAccessRuleProtection($true, $false) # Delete inheritance  
@@ -264,16 +264,16 @@ if ((Test-Path $ACLFile) -and (Test-Path $RolesFile) -and (Test-Path $OwnerFile)
             #$Rights | Select-Object * | Format-Table -AutoSize
             #(Get-Item $ItemPath).SetAccessControl($CurrentACL)
             Set-Acl -Path $ItemPath -AclObject $CurrentACL
-            Add-ToLog -Message "Permissions changed." -logFilePath $Global:ScriptLogFilePath -display -status "Info" -level ($ParentLevel + 1)
+            Add-ToLog -Message "Permissions changed." -logFilePath $Global:gsScriptLogFilePath -display -status "Info" -level ($Global:gsParentLevel + 1)
         }
         Else{
-            Add-ToLog -Message "Permissions are equal to model." -logFilePath $Global:ScriptLogFilePath -display -status "Info" -level ($ParentLevel + 1)
+            Add-ToLog -Message "Permissions are equal to model." -logFilePath $Global:gsScriptLogFilePath -display -status "Info" -level ($Global:gsParentLevel + 1)
         }
     }
 }
 Else{
-    Add-ToLog -Message "There is no [$ACLFile] or [$RolesFile] for project [$PathToFolder]." -logFilePath $Global:ScriptLogFilePath -display -status "Error" -level ($ParentLevel + 1)
+    Add-ToLog -Message "There is no [$ACLFile] or [$RolesFile] for project [$PathToFolder]." -logFilePath $Global:gsScriptLogFilePath -display -status "Error" -level ($Global:gsParentLevel + 1)
 }
 
 ################################# Script end here ###################################
-. "$GlobalSettingsPath\$SCRIPTSFolder\Finish.ps1"
+. "$($Global:gsGlobalSettingsPath)\$($Global:gsSCRIPTSFolder)\Finish.ps1"

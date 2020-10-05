@@ -1,10 +1,10 @@
 <#
     .SYNOPSIS 
         .AUTOR
-        .DATE
-        .VER
+        DATE
+        VER
     .DESCRIPTION
-    .PARAMETER
+    
     .EXAMPLE
 #>
 Param (
@@ -21,7 +21,7 @@ trap {
     if (get-module -FullyQualifiedName AlexkUtils) {
        Get-ErrorReporting $_
 
-        . "$GlobalSettingsPath\$SCRIPTSFolder\Finish.ps1"  
+        . "$($Global:gsGlobalSettingsPath)\$($Global:gsSCRIPTSFolder)\Finish.ps1"  
     }
     Else {
         Write-Host "[$($MyInvocation.MyCommand.path)] There is error before logging initialized. Error: $_" -ForegroundColor Red
@@ -36,9 +36,9 @@ foreach ($Folder in $global:FoldersToApplyPath) {
         if (!($FoldersToIgnoreName -contains $Project.Name)) {
             $ProjectPath = $Project.FullName
             Write-Host $ProjectPath
-            [string]$ACLFilePath   = "$ProjectPath\$ACLFolder\$AccessFileName"
-            [string]$RolesFilePath = "$ProjectPath\$ACLFolder\$RolesFileName"
-            [string]$OwnerFilePath = "$ProjectPath\$ACLFolder\$OwnerFileName"
+            [string]$ACLFilePath   = "$ProjectPath\$($Global:gsACLFolder)\$AccessFileName"
+            [string]$RolesFilePath = "$ProjectPath\$($Global:gsACLFolder)\$RolesFileName"
+            [string]$OwnerFilePath = "$ProjectPath\$($Global:gsACLFolder)\$OwnerFileName"
             $ACLFilesExist = ((Test-Path $ACLFilePath) -and (Test-Path $RolesFilePath) -and (Test-Path $OwnerFilePath))
             #$ACLFilesExist
             if (!$ACLFilesExist -or $Global:RegenerateACL) {
@@ -50,4 +50,4 @@ foreach ($Folder in $global:FoldersToApplyPath) {
 }
 
 ################################# Script end here ###################################
-. "$GlobalSettingsPath\$SCRIPTSFolder\Finish.ps1"
+. "$($Global:gsGlobalSettingsPath)\$($Global:gsSCRIPTSFolder)\Finish.ps1"
